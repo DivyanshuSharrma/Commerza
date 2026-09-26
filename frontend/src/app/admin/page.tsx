@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
+import { ThemeToggle } from '@/components/portfolio/theme-toggle';
 import { useAdminData } from './hooks/use-admin-data';
 import { LoginForm } from './components/login-form';
 import { DashboardTab } from './components/dashboard-tab';
@@ -212,7 +214,14 @@ export default function AdminPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          <Link
+            href="/store"
+            className="text-xs text-foreground/70 hover:text-foreground font-semibold px-2.5 py-1.5 rounded-lg border border-border/70 hover:bg-border/40 transition-colors hidden sm:inline-flex items-center gap-1"
+          >
+            &larr; Storefront
+          </Link>
+          <ThemeToggle />
           <button
             onClick={loadData}
             title="Refresh Storefront Metrics"

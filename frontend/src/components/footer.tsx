@@ -1,4 +1,7 @@
+'use client';
+
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { BrandData } from '@/features/brand/brand-context.resolver';
 
 interface FooterProps {
@@ -6,89 +9,123 @@ interface FooterProps {
 }
 
 export function Footer({ brand }: FooterProps) {
+  const pathname = usePathname();
+
+  // Hide storefront footer on admin dashboard
+  if (pathname?.startsWith('/admin')) {
+    return null;
+  }
+
   const brandName = brand.name || 'Commerza';
   const supportEmail = `support@${brand.subdomain === 'default' ? 'commerza.com' : `${brand.subdomain}.com`}`;
 
   return (
-    <footer className="bg-surface-muted/50 border-t border-border/70 mt-auto py-12 text-xs text-foreground/60 transition-colors">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-          {/* Col 1: Brand Info */}
-          <div className="space-y-2 col-span-2 md:col-span-1">
-            <span className="text-sm font-extrabold text-foreground tracking-tight block">
-              {brandName}
-            </span>
-            <p className="text-xs text-foreground/60 leading-relaxed">
-              Precision digital commerce engine and production-ready software architectures.
+    <footer className="bg-card/40 border-t border-border/50 mt-auto py-14 text-xs text-foreground/60 transition-colors">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
+          {/* Brand Manifesto Col */}
+          <div className="space-y-3 col-span-2">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded bg-foreground text-background flex items-center justify-center font-black text-xs select-none">
+                C
+              </div>
+              <span className="text-sm font-black text-foreground tracking-tight">
+                {brandName}
+              </span>
+            </div>
+            <p className="text-xs text-foreground/60 leading-relaxed max-w-sm">
+              An independent digital engineering studio crafting verified architectural boilerplates, design systems, and production cloud kits.
             </p>
+            <div className="flex items-center gap-2 text-[10px] font-mono text-emerald-500 pt-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>All Delivery Pipelines Operational [ 99.98% ]</span>
+            </div>
           </div>
 
-          {/* Col 2: Navigation */}
-          <div className="space-y-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-foreground/80 block">
+          {/* Col 2: Artifacts */}
+          <div className="space-y-2.5">
+            <span className="text-[10px] font-mono uppercase tracking-widest text-foreground/50 block font-bold">
               Catalog
             </span>
-            <ul className="space-y-1.5">
+            <ul className="space-y-2 text-xs">
               <li>
                 <Link href="/store" className="hover:text-foreground transition-colors">
-                  Digital Store
+                  Digital Artifacts
                 </Link>
               </li>
               <li>
                 <Link href="/categories" className="hover:text-foreground transition-colors">
-                  All Collections
+                  Architecture Collections
+                </Link>
+              </li>
+              <li>
+                <Link href="/store" className="hover:text-foreground transition-colors">
+                  Featured Releases
                 </Link>
               </li>
             </ul>
           </div>
 
-          {/* Col 3: Company */}
-          <div className="space-y-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-foreground/80 block">
-              Company
+          {/* Col 3: Studio */}
+          <div className="space-y-2.5">
+            <span className="text-[10px] font-mono uppercase tracking-widest text-foreground/50 block font-bold">
+              Studio
             </span>
-            <ul className="space-y-1.5">
+            <ul className="space-y-2 text-xs">
               <li>
                 <Link href="/about" className="hover:text-foreground transition-colors">
-                  About & Craft
+                  Manifesto & Philosophy
+                </Link>
+              </li>
+              <li>
+                <Link href="/about#persona" className="hover:text-foreground transition-colors">
+                  Principal Advisory
                 </Link>
               </li>
               <li>
                 <Link href="/support" className="hover:text-foreground transition-colors">
-                  Order Recovery
+                  License & Recovery
                 </Link>
               </li>
             </ul>
           </div>
 
           {/* Col 4: Platform */}
-          <div className="space-y-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-foreground/80 block">
-              Management
+          <div className="space-y-2.5">
+            <span className="text-[10px] font-mono uppercase tracking-widest text-foreground/50 block font-bold">
+              Infrastructure
             </span>
-            <ul className="space-y-1.5">
+            <ul className="space-y-2 text-xs">
               <li>
                 <Link href="/admin" className="hover:text-foreground transition-colors">
-                  Admin Control Center
+                  Merchant Control Center
                 </Link>
               </li>
               <li>
                 <a href={`mailto:${supportEmail}`} className="hover:text-foreground transition-colors">
-                  Contact Support
+                  Priority Direct Support
                 </a>
+              </li>
+              <li>
+                <Link href="/support" className="hover:text-foreground transition-colors">
+                  Token Reissuance
+                </Link>
               </li>
             </ul>
           </div>
         </div>
 
-        <div className="pt-6 border-t border-border/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-foreground/50">
+        {/* Bottom Bar */}
+        <div className="pt-8 border-t border-border/40 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-foreground/45 font-mono">
           <div>
-            Copyright &copy; {new Date().getFullYear()} {brandName} Inc. All rights reserved.
+            &copy; {new Date().getFullYear()} {brandName} Atelier. Engineered for High-Concurrency Production.
           </div>
           <div className="flex gap-4">
-            <span className="hover:text-foreground cursor-pointer transition-colors">Privacy Policy</span>
+            <span className="hover:text-foreground cursor-pointer transition-colors">Privacy Framework</span>
+            <span>&bull;</span>
             <span className="hover:text-foreground cursor-pointer transition-colors">Terms of Sale</span>
-            <span className="hover:text-foreground cursor-pointer transition-colors">Commercial Licensing</span>
+            <span>&bull;</span>
+            <span className="hover:text-foreground cursor-pointer transition-colors">Single-License MIT</span>
           </div>
         </div>
       </div>
