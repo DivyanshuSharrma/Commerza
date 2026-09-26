@@ -134,7 +134,7 @@ export function ProductsTab({
           {filteredProducts.map((p) => {
             const primaryMedia = p.media?.find((m) => m.isPrimary) || p.media?.[0];
             const mediaUrl = primaryMedia?.url
-              ? primaryMedia.url.startsWith('http')
+              ? primaryMedia.url.startsWith('http') || primaryMedia.url.startsWith('/')
                 ? primaryMedia.url
                 : `/api/storage/local/${primaryMedia.url}`
               : null;

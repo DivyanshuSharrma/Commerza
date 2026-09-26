@@ -378,7 +378,7 @@ export function ProductEditorModal({
               <div className="flex flex-wrap gap-3">
                 {gallery.map((img, idx) => (
                   <div key={idx} className="relative group w-20 h-20 rounded-xl overflow-hidden border border-border bg-background">
-                    <img src={img.url.startsWith('http') ? img.url : `/api/storage/local/${img.url}`} alt="" className="w-full h-full object-cover" />
+                    <img src={img.url.startsWith('http') || img.url.startsWith('/') ? img.url : `/api/storage/local/${img.url}`} alt="" className="w-full h-full object-cover" />
                     <button
                       type="button"
                       onClick={() => setGallery((prev) => prev.filter((_, i) => i !== idx))}
