@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAdminData } from './hooks/use-admin-data';
 import { LoginForm } from './components/login-form';
 import { DashboardTab } from './components/dashboard-tab';
@@ -37,6 +37,13 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  const handleUnauthorized = useCallback(() => {
+    setToken(null);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('commerza_admin_token');
+    }
+  }, []);
+
   const {
     loadingData,
     orders,
@@ -72,7 +79,7 @@ export default function AdminPage() {
     handleToggleFlag,
     handleProfileUpdate,
     triggerToast,
-  } = useAdminData(token);
+  } = useAdminData(token, handleUnauthorized);
 
   const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api') + '/v1';
 
@@ -89,7 +96,14 @@ export default function AdminPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-      if (!res.ok) throw new Error('Invalid email or password');
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => null);
+        const errorMsg =
+          errJson?.error?.details && Array.isArray(errJson.error.details)
+            ? errJson.error.details.join(', ')
+            : errJson?.error?.message || errJson?.message || 'Invalid email or password';
+        throw new Error(errorMsg);
+      }
       const data = await res.json();
       const accessToken = data.data?.accessToken || data.accessToken;
       if (accessToken) {

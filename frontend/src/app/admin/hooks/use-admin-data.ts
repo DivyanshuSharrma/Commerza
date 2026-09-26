@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { parseError, sanitizeBrandPayload, DEFAULT_BRAND_ID } from './admin-api-helpers';
 
-export function useAdminData(token: string | null) {
+export function useAdminData(token: string | null, onUnauthorized?: () => void) {
   const [loadingData, setLoadingData] = useState(false);
   const [orders, setOrders] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
@@ -12,20 +13,20 @@ export function useAdminData(token: string | null) {
   const [settings, setSettings] = useState<any[]>([]);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [flags, setFlags] = useState<Record<string, boolean>>({});
-  const [selectedBrandId, setSelectedBrandId] = useState<string>('');
+  const [selectedBrandId, setSelectedBrandId] = useState<string>(DEFAULT_BRAND_ID);
   const [adminUser, setAdminUser] = useState({ name: 'Admin', email: 'admin@commerza.com' });
 
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
 
   const [brandForm, setBrandForm] = useState({
-    name: 'Commerza Studio',
+    name: 'Commerza Store',
     logoUrl: '',
     faviconUrl: '',
     primaryColor: '#4f46e5',
     secondaryColor: '#06b6d4',
     heroBadge: '',
-    heroTitle: '',
+    heroTitle: 'Welcome to Commerza',
     heroSubtitle: '',
     creatorBio: '',
     creatorRole: '',
@@ -43,24 +44,42 @@ export function useAdminData(token: string | null) {
     }, 4000);
   };
 
+  const getEffectiveToken = useCallback(() => {
+    if (token) return token;
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('commerza_admin_token');
+    }
+    return null;
+  }, [token]);
+
   const authFetch = useCallback(
-    (path: string, options: RequestInit = {}) =>
-      fetch(`${apiUrl}${path}`, {
+    async (path: string, options: RequestInit = {}) => {
+      const activeToken = getEffectiveToken();
+      const res = await fetch(`${apiUrl}${path}`, {
         ...options,
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          ...(activeToken ? { Authorization: `Bearer ${activeToken}` } : {}),
           ...options.headers,
         },
-      }),
-    [apiUrl, token]
+      });
+      if (res.status === 401) {
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('commerza_admin_token');
+        }
+        onUnauthorized?.();
+      }
+      return res;
+    },
+    [apiUrl, getEffectiveToken, onUnauthorized]
   );
 
   const loadData = useCallback(async () => {
-    if (!token) return;
+    const activeToken = getEffectiveToken();
+    if (!activeToken) return;
     setLoadingData(true);
     try {
-      const headers = { Authorization: `Bearer ${token}` };
+      const headers = { Authorization: `Bearer ${activeToken}` };
 
       const [brandRes, prodRes, catRes, orderRes, custRes, couponRes, settingsRes, flagsRes, auditRes, profileRes] =
         await Promise.all([
@@ -76,6 +95,15 @@ export function useAdminData(token: string | null) {
           fetch(`${apiUrl}/auth/profile`, { headers }),
         ]);
 
+      if (profileRes.status === 401 || orderRes.status === 401) {
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('commerza_admin_token');
+        }
+        onUnauthorized?.();
+        triggerToast('Admin session expired. Please sign in again.', 'error');
+        return;
+      }
+
       if (brandRes.ok) {
         const body = await brandRes.json();
         const data = body.data || [];
@@ -84,13 +112,13 @@ export function useAdminData(token: string | null) {
           setSelectedBrandId(b.id);
           const t = b.themeSettings || {};
           setBrandForm({
-            name: b.name || '',
+            name: b.name || 'Commerza Store',
             logoUrl: b.logoUrl || '',
             faviconUrl: b.faviconUrl || '',
             primaryColor: b.primaryColor || '#4f46e5',
             secondaryColor: b.secondaryColor || '#06b6d4',
             heroBadge: t.heroBadge || '',
-            heroTitle: t.heroTitle || '',
+            heroTitle: t.heroTitle || 'Welcome to Commerza',
             heroSubtitle: t.heroSubtitle || '',
             creatorBio: t.creatorBio || '',
             creatorRole: t.creatorRole || '',
@@ -118,7 +146,7 @@ export function useAdminData(token: string | null) {
     } finally {
       setLoadingData(false);
     }
-  }, [token, apiUrl]);
+  }, [getEffectiveToken, apiUrl, onUnauthorized]);
 
   useEffect(() => {
     if (token) loadData();
@@ -127,9 +155,18 @@ export function useAdminData(token: string | null) {
   // Product Operations
   const handleCreateProduct = async (productData: any) => {
     try {
-      const res = await authFetch('/products', { method: 'POST', body: JSON.stringify(productData) });
-      if (!res.ok) throw new Error((await res.json().catch(() => null))?.message || 'Failed to create product');
-      triggerToast('Product created successfully!', 'success');
+      const { id, ...cleanData } = productData;
+      cleanData.brandId = cleanData.brandId || selectedBrandId || DEFAULT_BRAND_ID;
+
+      const res = id
+        ? await authFetch(`/products/${id}`, { method: 'PATCH', body: JSON.stringify(cleanData) })
+        : await authFetch('/products', { method: 'POST', body: JSON.stringify(cleanData) });
+
+      if (!res.ok) {
+        const errorMsg = await parseError(res, id ? 'Failed to update product' : 'Failed to create product');
+        throw new Error(errorMsg);
+      }
+      triggerToast(id ? 'Product updated successfully!' : 'Product created successfully!', 'success');
       loadData();
     } catch (err: any) {
       triggerToast(err.message, 'error');
@@ -143,7 +180,7 @@ export function useAdminData(token: string | null) {
       onConfirm: async () => {
         try {
           const res = await authFetch(`/products/${productId}`, { method: 'DELETE' });
-          if (!res.ok) throw new Error('Failed to delete product');
+          if (!res.ok) throw new Error(await parseError(res, 'Failed to delete product'));
           triggerToast('Product deleted successfully', 'success');
           loadData();
         } catch (err: any) {
@@ -162,7 +199,7 @@ export function useAdminData(token: string | null) {
         method: 'PATCH',
         body: JSON.stringify({ status: nextStatus }),
       });
-      if (!res.ok) throw new Error('Status update failed');
+      if (!res.ok) throw new Error(await parseError(res, 'Status update failed'));
       triggerToast(`Product status updated to ${nextStatus}`, 'success');
       loadData();
     } catch (err: any) {
@@ -173,7 +210,7 @@ export function useAdminData(token: string | null) {
   // Order Operations
   const handleFetchOrderDetails = async (id: string) => {
     const res = await authFetch(`/orders/${id}`);
-    if (!res.ok) throw new Error('Failed to fetch order details');
+    if (!res.ok) throw new Error(await parseError(res, 'Failed to fetch order details'));
     const body = await res.json();
     return body.data || body;
   };
@@ -181,7 +218,7 @@ export function useAdminData(token: string | null) {
   const handleResendEmail = async (id: string) => {
     try {
       const res = await authFetch(`/orders/${id}/resend-email`, { method: 'POST' });
-      if (!res.ok) throw new Error('Failed to resend fulfillment email');
+      if (!res.ok) throw new Error(await parseError(res, 'Failed to resend fulfillment email'));
       triggerToast('Fulfillment email resent successfully!', 'success');
     } catch (err: any) {
       triggerToast(err.message, 'error');
@@ -191,7 +228,7 @@ export function useAdminData(token: string | null) {
   const handleRegenerateLink = async (id: string) => {
     try {
       const res = await authFetch(`/orders/${id}/regenerate-link`, { method: 'POST' });
-      if (!res.ok) throw new Error('Failed to regenerate link');
+      if (!res.ok) throw new Error(await parseError(res, 'Failed to regenerate link'));
       const body = await res.json();
       triggerToast('Download link regenerated successfully!', 'success');
       loadData();
@@ -210,7 +247,7 @@ export function useAdminData(token: string | null) {
         method: 'PATCH',
         body: JSON.stringify({ status: nextStatus }),
       });
-      if (!res.ok) throw new Error('Failed to update customer status');
+      if (!res.ok) throw new Error(await parseError(res, 'Failed to update customer status'));
       triggerToast(`Customer status updated to ${nextStatus}`, 'success');
       loadData();
     } catch (err: any) {
@@ -222,7 +259,7 @@ export function useAdminData(token: string | null) {
   const handleCreateCoupon = async (couponData: any) => {
     try {
       const res = await authFetch('/coupons', { method: 'POST', body: JSON.stringify(couponData) });
-      if (!res.ok) throw new Error((await res.json().catch(() => null))?.message || 'Failed to create coupon');
+      if (!res.ok) throw new Error(await parseError(res, 'Failed to create coupon'));
       triggerToast('Coupon created successfully!', 'success');
       loadData();
     } catch (err: any) {
@@ -234,7 +271,7 @@ export function useAdminData(token: string | null) {
   const handleCouponUpdate = async (id: string, payload: any) => {
     try {
       const res = await authFetch(`/coupons/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
-      if (!res.ok) throw new Error('Coupon update failed');
+      if (!res.ok) throw new Error(await parseError(res, 'Coupon update failed'));
       triggerToast('Coupon updated successfully!', 'success');
       loadData();
     } catch (err: any) {
@@ -248,7 +285,7 @@ export function useAdminData(token: string | null) {
       onConfirm: async () => {
         try {
           const res = await authFetch(`/coupons/${couponId}`, { method: 'DELETE' });
-          if (!res.ok) throw new Error('Failed to delete coupon');
+          if (!res.ok) throw new Error(await parseError(res, 'Failed to delete coupon'));
           triggerToast('Coupon deleted successfully', 'success');
           loadData();
         } catch (err: any) {
@@ -263,8 +300,12 @@ export function useAdminData(token: string | null) {
   // Category Operations
   const handleCreateCategory = async (catData: any) => {
     try {
-      const res = await authFetch('/categories', { method: 'POST', body: JSON.stringify(catData) });
-      if (!res.ok) throw new Error((await res.json().catch(() => null))?.message || 'Failed to create category');
+      const payload = {
+        ...catData,
+        brandId: catData.brandId || selectedBrandId || DEFAULT_BRAND_ID,
+      };
+      const res = await authFetch('/categories', { method: 'POST', body: JSON.stringify(payload) });
+      if (!res.ok) throw new Error(await parseError(res, 'Failed to create category'));
       triggerToast('Category created successfully!', 'success');
       loadData();
     } catch (err: any) {
@@ -279,7 +320,7 @@ export function useAdminData(token: string | null) {
       onConfirm: async () => {
         try {
           const res = await authFetch(`/categories/${categoryId}`, { method: 'DELETE' });
-          if (!res.ok) throw new Error('Failed to delete category');
+          if (!res.ok) throw new Error(await parseError(res, 'Failed to delete category'));
           triggerToast('Category deleted successfully', 'success');
           loadData();
         } catch (err: any) {
@@ -291,36 +332,17 @@ export function useAdminData(token: string | null) {
     });
   };
 
-  // Brand Operations (Full dynamic theme settings)
+  // Brand Operations
   const handleBrandSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedBrandId) return;
+    const brandIdToSave = selectedBrandId || DEFAULT_BRAND_ID;
     try {
-      const skillsArray = brandForm.skills
-        ? brandForm.skills.split(',').map((s) => s.trim()).filter(Boolean)
-        : [];
-
-      const res = await authFetch(`/brands/${selectedBrandId}`, {
+      const payload = sanitizeBrandPayload(brandForm);
+      const res = await authFetch(`/brands/${brandIdToSave}`, {
         method: 'PATCH',
-        body: JSON.stringify({
-          name: brandForm.name,
-          logoUrl: brandForm.logoUrl || null,
-          faviconUrl: brandForm.faviconUrl || null,
-          primaryColor: brandForm.primaryColor,
-          secondaryColor: brandForm.secondaryColor,
-          themeSettings: {
-            heroBadge: brandForm.heroBadge,
-            heroTitle: brandForm.heroTitle,
-            heroSubtitle: brandForm.heroSubtitle,
-            creatorBio: brandForm.creatorBio,
-            creatorRole: brandForm.creatorRole,
-            creatorLocation: brandForm.creatorLocation,
-            skills: skillsArray,
-            hireEmail: brandForm.hireEmail,
-          },
-        }),
+        body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error('Failed to save brand settings');
+      if (!res.ok) throw new Error(await parseError(res, 'Failed to save brand settings'));
       triggerToast('Brand & Portfolio configuration saved successfully!', 'success');
       loadData();
     } catch (err: any) {
@@ -332,8 +354,8 @@ export function useAdminData(token: string | null) {
   const handleSaveSettings = async (formData: any) => {
     try {
       await Promise.all(
-        Object.entries(formData).map(([key, val]) =>
-          authFetch('/settings', {
+        Object.entries(formData).map(async ([key, val]) => {
+          const res = await authFetch('/settings', {
             method: 'POST',
             body: JSON.stringify({
               key,
@@ -341,8 +363,10 @@ export function useAdminData(token: string | null) {
               level: selectedBrandId ? 'BRAND' : key.includes('provider') ? 'GLOBAL' : 'SYSTEM',
               entityId: selectedBrandId || null,
             }),
-          })
-        )
+          });
+          if (!res.ok) throw new Error(await parseError(res, `Failed to save setting: ${key}`));
+          return res;
+        })
       );
       triggerToast('Provider configuration saved successfully!', 'success');
       loadData();
@@ -355,7 +379,7 @@ export function useAdminData(token: string | null) {
   const handleToggleFlag = async (name: string) => {
     try {
       const res = await authFetch('/feature-flags/toggle', { method: 'POST', body: JSON.stringify({ name }) });
-      if (!res.ok) throw new Error('Failed to toggle feature flag');
+      if (!res.ok) throw new Error(await parseError(res, 'Failed to toggle feature flag'));
       triggerToast('Feature flag status updated!', 'success');
       loadData();
     } catch (err: any) {
@@ -367,7 +391,7 @@ export function useAdminData(token: string | null) {
   const handleProfileUpdate = async (formData: any) => {
     try {
       const res = await authFetch('/auth/profile', { method: 'PATCH', body: JSON.stringify(formData) });
-      if (!res.ok) throw new Error((await res.json().catch(() => null))?.message || 'Profile update failed');
+      if (!res.ok) throw new Error(await parseError(res, 'Profile update failed'));
       triggerToast('Profile updated successfully!', 'success');
       loadData();
       return true;
