@@ -47,6 +47,7 @@ export async function getBrandContext(): Promise<BrandData> {
     const data = body.data || body;
     return {
       ...data,
+      name: data.name || 'Commerza',
       themeSettings: {
         heroBadge: data.themeSettings?.heroBadge || '✦ INDEPENDENT DIGITAL ATELIER & ARTIFACTS',
         heroTitle: data.themeSettings?.heroTitle || 'Architecting Next-Gen Digital Goods & Codecraft',
@@ -89,7 +90,7 @@ export async function getBrandContext(): Promise<BrandData> {
   } catch (err) {
     return {
       id: 'default',
-      name: 'Commerza Studio',
+      name: 'Commerza',
       subdomain: 'default',
       customDomain: null,
       logoUrl: null,

@@ -1,9 +1,8 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { BrandData } from '@/features/brand/brand-context.resolver';
-import { OrderRecoveryModal } from './order-recovery-modal';
 import { ThemeToggle } from './portfolio/theme-toggle';
 
 interface HeaderProps {
@@ -11,67 +10,64 @@ interface HeaderProps {
 }
 
 export function Header({ brand }: HeaderProps) {
-  const [isRecoveryOpen, setIsRecoveryOpen] = useState(false);
+  const pathname = usePathname();
+
+  const navLinks = [
+    { label: 'Store', href: '/store' },
+    { label: 'Categories', href: '/categories' },
+    { label: 'About', href: '/about' },
+    { label: 'Support', href: '/support' },
+  ];
 
   return (
-    <>
-      <header className="sticky top-0 z-40 w-full bg-card/80 backdrop-blur-xl border-b border-border/70 transition-all">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-          {/* Brand Logo & Name */}
-          <Link href="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
-            {brand.logoUrl ? (
-              <img src={brand.logoUrl} alt={brand.name} className="h-8 w-auto object-contain" />
-            ) : (
-              <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center text-white font-extrabold shadow-sm select-none text-sm">
-                {brand.name.substring(0, 1).toUpperCase()}
-              </div>
-            )}
-            <div className="flex flex-col">
-              <span className="text-base font-extrabold tracking-tight text-foreground leading-none">
-                {brand.name}
-              </span>
-              <span className="text-[10px] font-semibold text-foreground/50 tracking-wider uppercase mt-0.5">
-                Digital Atelier
-              </span>
+    <header className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-xl border-b border-border/60 transition-colors">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-4">
+        {/* Brand Logo & Name */}
+        <Link href="/" className="flex items-center gap-2.5 hover:opacity-85 transition-opacity">
+          {brand.logoUrl ? (
+            <img src={brand.logoUrl} alt={brand.name || 'Commerza'} className="h-6 w-auto object-contain" />
+          ) : (
+            <div className="w-7 h-7 rounded-lg bg-foreground text-background flex items-center justify-center font-black text-xs select-none shadow-xs">
+              C
             </div>
+          )}
+          <span className="text-sm font-extrabold tracking-tight text-foreground">
+            {brand.name || 'Commerza'}
+          </span>
+        </Link>
+
+        {/* Apple-style minimalist Center Navigation Links */}
+        <nav className="flex items-center gap-1 sm:gap-6 text-xs font-medium text-foreground/75">
+          {navLinks.map((link) => {
+            const isActive = pathname === link.href;
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`px-2.5 py-1 rounded-full transition-all ${
+                  isActive
+                    ? 'text-foreground font-bold bg-foreground/5'
+                    : 'hover:text-foreground text-foreground/70'
+                }`}
+              >
+                {link.label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* Right Actions: Theme Toggle & Admin Access */}
+        <div className="flex items-center gap-2.5">
+          <ThemeToggle />
+          <Link
+            href="/admin"
+            className="text-[11px] font-semibold text-foreground/60 hover:text-foreground border border-border/80 px-2.5 py-1 rounded-full transition-colors hidden sm:inline-block"
+            title="Admin Dashboard"
+          >
+            Admin
           </Link>
-
-          {/* Center Navigation Links (Hidden on small mobile) */}
-          <nav className="hidden md:flex items-center gap-6 text-xs font-semibold text-foreground/75">
-            <a href="#goods" className="hover:text-primary transition-colors">
-              Artifacts & Goods
-            </a>
-            <a href="#philosophy" className="hover:text-primary transition-colors">
-              Philosophy
-            </a>
-            <a href="#faq" className="hover:text-primary transition-colors">
-              FAQ
-            </a>
-            <Link href="/admin" className="hover:text-primary transition-colors text-foreground/50">
-              Admin Portal
-            </Link>
-          </nav>
-
-          {/* Right Action Hub: Theme Switcher & Order Recovery */}
-          <div className="flex items-center gap-3">
-            <ThemeToggle />
-
-            <button
-              onClick={() => setIsRecoveryOpen(true)}
-              className="text-xs font-semibold text-foreground/80 hover:text-primary transition-colors flex items-center gap-1.5 border border-border/80 bg-surface-muted/50 hover:bg-surface-muted px-3 py-1.5 rounded-xl cursor-pointer shadow-2xs"
-            >
-              <span>📦</span>
-              <span className="hidden sm:inline">Find My Orders</span>
-            </button>
-          </div>
         </div>
-      </header>
-
-      <OrderRecoveryModal
-        isOpen={isRecoveryOpen}
-        onClose={() => setIsRecoveryOpen(false)}
-        brandId={brand.id}
-      />
-    </>
+      </div>
+    </header>
   );
 }

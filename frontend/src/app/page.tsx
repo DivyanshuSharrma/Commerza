@@ -1,24 +1,25 @@
 import { getBrandContext } from '@/features/brand/brand-context.resolver';
-import { PortfolioLanding } from '@/components/portfolio/portfolio-landing';
-
-async function getProducts(brandId: string) {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
-  try {
-    const res = await fetch(`${apiUrl}/v1/products?brandId=${brandId}`, {
-      cache: 'no-store',
-    });
-    if (!res.ok) return [];
-    const body = await res.json();
-    return body.data || [];
-  } catch (err) {
-    return [];
-  }
-}
+import { AppleHero } from '@/components/apple/apple-hero';
+import { AppleBento } from '@/components/apple/apple-bento';
+import { AppleMatrix } from '@/components/apple/apple-matrix';
+import { AppleCta } from '@/components/apple/apple-cta';
 
 export default async function Home() {
   const brand = await getBrandContext();
-  const products = await getProducts(brand.id);
-  const activeProducts = products.filter((p: any) => p.status === 'ACTIVE');
 
-  return <PortfolioLanding brand={brand} products={activeProducts} />;
+  return (
+    <div className="flex flex-col flex-1">
+      {/* 1. Keynote Hero */}
+      <AppleHero brand={brand} />
+
+      {/* 2. Apple Bento Domain Highlights */}
+      <AppleBento />
+
+      {/* 3. The Commerza Standard Pillars */}
+      <AppleMatrix />
+
+      {/* 4. Keynote Closing CTA */}
+      <AppleCta />
+    </div>
+  );
 }
