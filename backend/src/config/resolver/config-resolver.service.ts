@@ -54,4 +54,8 @@ export class ConfigResolverService {
     const val = await this.resolve(key, context, defaultValue.toString());
     return val === 'true' || val === '1';
   }
+
+  async get(key: string, context: ConfigContext = {}, defaultValue: string = ''): Promise<string> {
+    return this.resolve(key, context, defaultValue);
+  }
 }

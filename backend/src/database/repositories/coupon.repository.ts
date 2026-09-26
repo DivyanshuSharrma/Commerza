@@ -61,4 +61,11 @@ export class CouponRepository {
       where: { id },
     });
   }
+
+  async incrementUsage(id: string) {
+    return this.prisma.coupon.update({
+      where: { id },
+      data: { usageCount: { increment: 1 } },
+    });
+  }
 }

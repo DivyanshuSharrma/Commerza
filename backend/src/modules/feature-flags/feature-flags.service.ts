@@ -7,7 +7,8 @@ export class FeatureFlagsService {
   constructor(private readonly settingRepo: SettingRepository) {}
 
   async isEnabled(flag: string, brandId?: string): Promise<boolean> {
-    const key = `flag_${flag}`;
+    const clean = flag.replace(/^flag_/, '');
+    const key = `flag_${clean}`;
     
     // Check Brand level flag
     if (brandId) {
@@ -23,6 +24,9 @@ export class FeatureFlagsService {
     const systemS = await this.settingRepo.findUniqueSetting(SettingLevel.SYSTEM, key, null);
     if (systemS) return systemS.value === 'true' || systemS.value === '1';
 
+    // Default coupons to enabled if no explicit override exists
+    if (clean === 'coupons') return true;
+
     return false;
   }
 
@@ -32,18 +36,30 @@ export class FeatureFlagsService {
       where: { key: { startsWith: prefix } },
     });
 
-    const flags: Record<string, boolean> = {};
+    const flags: Record<string, boolean> = {
+      coupons: true,
+      reviews: false,
+      invoices: true,
+      affiliate: false,
+      analytics: true,
+      social_login: false,
+    };
     for (const s of settings) {
       const flagName = s.key.replace(prefix, '');
       if (s.level === 'SYSTEM' || s.level === 'GLOBAL' || (s.level === 'BRAND' && s.entityId === brandId)) {
         flags[flagName] = s.value === 'true' || s.value === '1';
+        flags[s.key] = s.value === 'true' || s.value === '1';
       }
     }
     return flags;
   }
 
-  async toggleFlag(flag: string, value: boolean, level: SettingLevel, entityId: string | null = null): Promise<void> {
-    const key = `flag_${flag}`;
-    await this.settingRepo.upsert(level, key, value.toString(), entityId);
+  async toggleFlag(flag: string, value?: boolean, level: SettingLevel = SettingLevel.GLOBAL, entityId: string | null = null): Promise<boolean> {
+    const clean = flag.replace(/^flag_/, '');
+    const key = `flag_${clean}`;
+
+    const nextValue = value !== undefined ? value : !(await this.isEnabled(clean, entityId || undefined));
+    await this.settingRepo.upsert(level, key, nextValue.toString(), entityId);
+    return nextValue;
   }
 }

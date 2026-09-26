@@ -16,6 +16,7 @@ interface Product {
   id: string;
   title: string;
   price: string;
+  salePrice?: string | null;
   description: string;
 }
 
@@ -72,7 +73,7 @@ function CheckoutForm() {
       .then((body) => {
         if (!body) return;
         setProduct(body.data);
-        setFinalPrice(parseFloat(body.data.price));
+        setFinalPrice(parseFloat(body.data.salePrice || body.data.price));
       })
       .catch(() => {
         setToast({ message: 'Failed to retrieve checkout configuration.', type: 'error' });
@@ -89,38 +90,26 @@ function CheckoutForm() {
     setToast(null);
 
     try {
-      const res = await fetch(`${apiUrl}/coupons`);
-      if (!res.ok) throw new Error();
+      const res = await fetch(`${apiUrl}/coupons/validate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: couponCode.trim(),
+          brandId: brand?.id,
+        }),
+      });
+
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => null);
+        throw new Error(errBody?.message || 'Coupon code is invalid or disabled.');
+      }
+
       const body = await res.json();
-      const list = body.data || [];
-      const match = list.find((c: any) => c.code.toUpperCase() === couponCode.trim().toUpperCase() && c.active);
-
-      if (!match) {
-        setToast({ message: 'Coupon code is invalid or disabled.', type: 'error' });
-        setCouponDetails(null);
-        if (product) setFinalPrice(parseFloat(product.price));
-        return;
-      }
-
-      // Validate expiry
-      if (match.expiresAt && new Date() > new Date(match.expiresAt)) {
-        setToast({ message: 'This coupon has expired.', type: 'error' });
-        setCouponDetails(null);
-        if (product) setFinalPrice(parseFloat(product.price));
-        return;
-      }
-
-      // Validate usage count
-      if (match.usageLimit && match.usageCount >= match.usageLimit) {
-        setToast({ message: 'This coupon usage limit has been reached.', type: 'error' });
-        setCouponDetails(null);
-        if (product) setFinalPrice(parseFloat(product.price));
-        return;
-      }
+      const match = body.data;
 
       setCouponDetails(match);
       const discount = parseFloat(match.discount);
-      const base = parseFloat(product!.price);
+      const base = parseFloat(product!.salePrice || product!.price);
       let calculated = base;
 
       if (match.isPercent) {
@@ -131,8 +120,10 @@ function CheckoutForm() {
 
       setFinalPrice(Math.max(0, calculated));
       setToast({ message: 'Coupon applied successfully!', type: 'success' });
-    } catch (err) {
-      setToast({ message: 'Coupon application failed.', type: 'error' });
+    } catch (err: any) {
+      setToast({ message: err.message || 'Coupon application failed.', type: 'error' });
+      setCouponDetails(null);
+      if (product) setFinalPrice(parseFloat(product.salePrice || product.price));
     } finally {
       setApplyingCoupon(false);
     }
@@ -183,7 +174,8 @@ function CheckoutForm() {
           email: email.toLowerCase(),
           name: name || undefined,
           productId: product.id,
-          brandId: brand?.id, // Dynamic brand ID from DB
+          brandId: brand?.id,
+          couponCode: couponDetails ? couponCode.trim() : undefined,
         }),
       });
 
@@ -195,57 +187,51 @@ function CheckoutForm() {
       const orderBody = await orderRes.json();
       const orderData = orderBody.data;
 
+      const provider = orderData.payment?.provider;
       const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
 
-      // If Razorpay Key is not set or is a placeholder, trigger the custom mock modal!
-      if (!keyId || keyId === 'rzp_test_change_this' || !keyId.startsWith('rzp_')) {
-        setCreatedOrderId(orderData.orderId);
-        setIsMockModalOpen(true);
-        setSubmitting(false);
+      // If Razorpay Provider and Key is configured:
+      if (provider === 'RAZORPAY' && keyId && keyId.startsWith('rzp_')) {
+        const scriptLoaded = await loadRazorpayScript();
+        if (!scriptLoaded) {
+          throw new Error('Razorpay SDK failed to load. Are you offline?');
+        }
+
+        const options = {
+          key: keyId,
+          amount: Math.round(orderData.amount * 100),
+          currency: orderData.currency || 'USD',
+          name: brand?.name || 'Commerza Store',
+          description: `Purchase: ${product.title}`,
+          order_id: orderData.payment.id,
+          handler: async function () {
+            setSubmitting(true);
+            router.push(`/success/${orderData.orderId}`);
+          },
+          prefill: {
+            name: name || undefined,
+            email: email,
+          },
+          theme: {
+            color: brand?.primaryColor || '#4f46e5',
+          },
+          modal: {
+            ondismiss: function () {
+              setSubmitting(false);
+              setToast({ message: 'Payment was cancelled by the user.', type: 'error' });
+            },
+          },
+        };
+
+        const rzp = new (window as any).Razorpay(options);
+        rzp.open();
         return;
       }
 
-      // Load Razorpay Script
-      const scriptLoaded = await loadRazorpayScript();
-      if (!scriptLoaded) {
-        throw new Error('Razorpay SDK failed to load. Are you offline?');
-      }
-
-      // Mount Razorpay Checkout Widget
-      const options = {
-        key: keyId,
-        amount: orderData.payment.amount || Math.round(finalPrice * 100),
-        currency: 'USD',
-        name: 'Commerza Store',
-        description: `Purchase: ${product.title}`,
-        order_id: orderData.payment.id, // Backend returns order ID
-        handler: async function () {
-          setSubmitting(true);
-          try {
-            // Redirect to success page for secure payment verification on the server/client
-            router.push(`/success/${orderData.orderId}`);
-          } catch (err) {
-            setToast({ message: 'Payment verification failed.', type: 'error' });
-            setSubmitting(false);
-          }
-        },
-        prefill: {
-          name: name || undefined,
-          email: email,
-        },
-        theme: {
-          color: '#4f46e5',
-        },
-        modal: {
-          ondismiss: function () {
-            setSubmitting(false);
-            setToast({ message: 'Payment was cancelled by the user.', type: 'error' });
-          },
-        },
-      };
-
-      const rzp = new (window as any).Razorpay(options);
-      rzp.open();
+      // Default: Mock, Stripe ClientSecret demo, or dev fulfillment modal
+      setCreatedOrderId(orderData.orderId);
+      setIsMockModalOpen(true);
+      setSubmitting(false);
     } catch (err: any) {
       setToast({ message: err.message || 'Payment initiation failed. Please try again.', type: 'error' });
       setSubmitting(false);

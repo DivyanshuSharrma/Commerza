@@ -20,16 +20,26 @@ export class FeatureFlagsController {
 
   @Post('toggle')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @RequirePermissions('settings:write')
+  @RequirePermissions('setting:update')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Toggle a feature flag' })
   async toggleFlag(
-    @Body('flag') flag: string,
-    @Body('value') value: boolean,
-    @Body('level') level: SettingLevel,
+    @Body('flag') flag?: string,
+    @Body('name') name?: string,
+    @Body('value') value?: boolean,
+    @Body('level') level?: SettingLevel,
     @Body('entityId') entityId: string | null = null,
   ) {
-    await this.flagsService.toggleFlag(flag, value, level, entityId);
-    return { success: true };
+    const targetFlag = flag || name;
+    if (!targetFlag) {
+      return { success: false, message: 'Flag identifier is required' };
+    }
+    const updatedValue = await this.flagsService.toggleFlag(
+      targetFlag,
+      value,
+      level || SettingLevel.GLOBAL,
+      entityId,
+    );
+    return { success: true, flag: targetFlag, value: updatedValue };
   }
 }

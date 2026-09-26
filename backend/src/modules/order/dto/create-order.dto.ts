@@ -21,4 +21,9 @@ export class CreateOrderDto {
   @IsString()
   @IsNotEmpty()
   brandId!: string;
+
+  @ApiProperty({ example: 'SUMMER20', required: false })
+  @IsString()
+  @IsOptional()
+  couponCode?: string;
 }

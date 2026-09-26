@@ -1,167 +1,85 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useAdminData } from './hooks/use-admin-data';
 import { LoginForm } from './components/login-form';
 import { DashboardTab } from './components/dashboard-tab';
+import { AnalyticsTab } from './components/analytics-tab';
 import { ProductsTab } from './components/products-tab';
+import { CategoriesTab } from './components/categories-tab';
 import { OrdersTab } from './components/orders-tab';
 import { CustomersTab } from './components/customers-tab';
 import { CouponsTab } from './components/coupons-tab';
 import { BrandTab } from './components/brand-tab';
 import { ProvidersTab } from './components/providers-tab';
 import { FeatureFlagsTab } from './components/feature-flags-tab';
-import { AnalyticsTab } from './components/analytics-tab';
 import { AuditLogsTab } from './components/audit-logs-tab';
 import { ProfileTab } from './components/profile-tab';
 
 type TabId =
   | 'dashboard'
+  | 'analytics'
   | 'products'
+  | 'categories'
   | 'orders'
   | 'customers'
   | 'coupons'
   | 'brand'
   | 'settings'
   | 'feature_flags'
-  | 'analytics'
   | 'audit_logs'
   | 'profile';
 
 export default function AdminPage() {
   const [token, setToken] = useState<string | null>(null);
-  const [email, setEmail] = useState('admin@commerza.com');
-  const [password, setPassword] = useState('admin123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [loadingData, setLoadingData] = useState(false);
 
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
-
-  const [orders, setOrders] = useState<any[]>([]);
-  const [products, setProducts] = useState<any[]>([]);
-  const [customers, setCustomers] = useState<any[]>([]);
-  const [coupons, setCoupons] = useState<any[]>([]);
-  const [settings, setSettings] = useState<any[]>([]);
-  const [auditLogs, setAuditLogs] = useState<any[]>([]);
-  const [flags, setFlags] = useState<Record<string, boolean>>({});
-  const [selectedBrandId, setSelectedBrandId] = useState<string>('');
-  const [adminUser, setAdminUser] = useState({ name: 'Admin', email: 'admin@commerza.com' });
-
-  const [brandForm, setBrandForm] = useState({
-    name: 'Commerza Digital Store',
-    logoUrl: '',
-    faviconUrl: '',
-    primaryColor: '#4f46e5',
-    secondaryColor: '#06b6d4',
-    heroTitle: '',
-    heroSubtitle: '',
-  });
+  const {
+    loadingData,
+    orders,
+    products,
+    customers,
+    coupons,
+    categories,
+    settings,
+    auditLogs,
+    flags,
+    selectedBrandId,
+    adminUser,
+    brandForm,
+    setBrandForm,
+    toast,
+    confirmModal,
+    setConfirmModal,
+    loadData,
+    handleCreateProduct,
+    handleDeleteProduct,
+    handleTogglePublish,
+    handleFetchOrderDetails,
+    handleResendEmail,
+    handleRegenerateLink,
+    handleCustomerStatusToggle,
+    handleCreateCoupon,
+    handleCouponUpdate,
+    handleDeleteCoupon,
+    handleCreateCategory,
+    handleDeleteCategory,
+    handleBrandSave,
+    handleSaveSettings,
+    handleToggleFlag,
+    handleProfileUpdate,
+    triggerToast,
+  } = useAdminData(token);
 
   const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api') + '/v1';
-
-  const triggerToast = (message: string, type: 'success' | 'error' = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => {
-      setToast((prev) => (prev?.message === message ? null : prev));
-    }, 4000);
-  };
 
   useEffect(() => {
     const savedToken = localStorage.getItem('commerza_admin_token');
     if (savedToken) setToken(savedToken);
   }, []);
-
-  useEffect(() => {
-    if (token) loadData();
-  }, [token]);
-
-  const loadData = async () => {
-    setLoadingData(true);
-    try {
-      const headers = { Authorization: `Bearer ${token}` };
-      
-      // Fetch Brands
-      const brandRes = await fetch(`${apiUrl}/brands`);
-      if (brandRes.ok) {
-        const body = await brandRes.json();
-        const data = body.data || [];
-        if (data.length > 0) {
-          const b = data[0];
-          setSelectedBrandId(b.id);
-          setBrandForm({
-            name: b.name,
-            logoUrl: b.logoUrl || '',
-            faviconUrl: b.faviconUrl || '',
-            primaryColor: b.primaryColor,
-            secondaryColor: b.secondaryColor,
-            heroTitle: b.themeSettings?.heroTitle || '',
-            heroSubtitle: b.themeSettings?.heroSubtitle || '',
-          });
-        }
-      }
-
-      // Fetch Products
-      const prodRes = await fetch(`${apiUrl}/products`);
-      if (prodRes.ok) {
-        const body = await prodRes.json();
-        setProducts(body.data || []);
-      }
-
-      // Fetch Orders
-      const orderRes = await fetch(`${apiUrl}/orders`, { headers });
-      if (orderRes.ok) {
-        const body = await orderRes.json();
-        setOrders(body.data || []);
-      }
-
-      // Fetch Customers
-      const custRes = await fetch(`${apiUrl}/customers`, { headers });
-      if (custRes.ok) {
-        const body = await custRes.json();
-        setCustomers(body.data || []);
-      }
-
-      // Fetch Coupons
-      const couponRes = await fetch(`${apiUrl}/coupons`, { headers });
-      if (couponRes.ok) {
-        const body = await couponRes.json();
-        setCoupons(body.data || []);
-      }
-
-      // Fetch Settings
-      const settingsRes = await fetch(`${apiUrl}/settings`, { headers });
-      if (settingsRes.ok) {
-        const body = await settingsRes.json();
-        setSettings(body.data || []);
-      }
-
-      // Fetch Feature Flags
-      const flagsRes = await fetch(`${apiUrl}/feature-flags`);
-      if (flagsRes.ok) {
-        const body = await flagsRes.json();
-        setFlags(body.data || {});
-      }
-
-      // Fetch Audit Logs
-      const auditRes = await fetch(`${apiUrl}/audit-logs`, { headers });
-      if (auditRes.ok) {
-        const body = await auditRes.json();
-        setAuditLogs(body.data || []);
-      }
-
-      // Fetch Profile Details
-      const profileRes = await fetch(`${apiUrl}/auth/profile`, { headers });
-      if (profileRes.ok) {
-        const body = await profileRes.json();
-        setAdminUser(body.data || body);
-      }
-    } catch (err) {
-      console.error('Error synchronizing database metrics:', err);
-    } finally {
-      setLoadingData(false);
-    }
-  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -171,340 +89,68 @@ export default function AdminPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-      if (!res.ok) throw new Error('Authentication failed');
-      const body = await res.json();
-      localStorage.setItem('commerza_admin_token', body.data.accessToken);
-      setToken(body.data.accessToken);
-    } catch (err: any) {
-      triggerToast(err.message || 'Login failed', 'error');
-    }
-  };
-
-  // Product CRUD Handlers
-  const handleProductCreate = async (payload: any) => {
-    try {
-      const res = await fetch(`${apiUrl}/products`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ ...payload, brandId: selectedBrandId }),
-      });
-      if (!res.ok) throw new Error('Product creation failed');
-      triggerToast('Product created successfully!', 'success');
-      loadData();
-    } catch (err: any) {
-      triggerToast(err.message, 'error');
-    }
-  };
-
-  const handleProductUpdate = async (id: string, payload: any) => {
-    try {
-      const res = await fetch(`${apiUrl}/products/${id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error('Product update failed');
-      triggerToast('Product updated successfully!', 'success');
-      loadData();
-    } catch (err: any) {
-      triggerToast(err.message, 'error');
-    }
-  };
-
-  const handleProductDelete = async (id: string) => {
-    setConfirmModal({
-      message: 'Are you sure you want to delete this product? This action will permanently remove it from the catalog.',
-      onConfirm: async () => {
-        try {
-          const res = await fetch(`${apiUrl}/products/${id}`, {
-            method: 'DELETE',
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (!res.ok) throw new Error('Product deletion failed');
-          triggerToast('Product deleted successfully!', 'success');
-          loadData();
-        } catch (err: any) {
-          triggerToast(err.message, 'error');
-        } finally {
-          setConfirmModal(null);
-        }
-      },
-    });
-  };
-
-  // Order Details Resolver
-  const handleFetchOrderDetails = async (id: string) => {
-    const res = await fetch(`${apiUrl}/orders/${id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!res.ok) throw new Error('Failed to fetch order details');
-    const body = await res.json();
-    return body.data || body;
-  };
-
-  // Order Email Resend
-  const handleResendEmail = async (id: string) => {
-    try {
-      const res = await fetch(`${apiUrl}/orders/${id}/resend-email`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Failed to resend fulfillment email');
-      triggerToast('Fulfillment receipt email resent successfully!', 'success');
-    } catch (err: any) {
-      triggerToast(err.message, 'error');
-    }
-  };
-
-  // Order Link Regeneration
-  const handleRegenerateLink = async (id: string) => {
-    try {
-      const res = await fetch(`${apiUrl}/orders/${id}/regenerate-link`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Failed to regenerate order link');
-      const body = await res.json();
-      triggerToast('Download link regenerated successfully!', 'success');
-      loadData();
-      return body.data || body;
-    } catch (err: any) {
-      triggerToast(err.message, 'error');
-      throw err;
-    }
-  };
-
-  // Customer Status Handler
-  const handleToggleCustomerStatus = async (id: string, current: string) => {
-    try {
-      const next = current === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
-      const res = await fetch(`${apiUrl}/customers/${id}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ status: next }),
-      });
-      if (!res.ok) throw new Error('Failed to update shopper status');
-      triggerToast('Shopper account status updated!', 'success');
-      loadData();
-    } catch (err: any) {
-      triggerToast(err.message, 'error');
-    }
-  };
-
-  // Coupon CRUD Handlers
-  const handleCouponCreate = async (payload: any) => {
-    try {
-      const res = await fetch(`${apiUrl}/coupons`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error('Coupon code creation failed');
-      triggerToast('Coupon created successfully!', 'success');
-      loadData();
-    } catch (err: any) {
-      triggerToast(err.message, 'error');
-    }
-  };
-
-  const handleCouponUpdate = async (id: string, payload: any) => {
-    try {
-      const res = await fetch(`${apiUrl}/coupons/${id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error('Coupon update failed');
-      triggerToast('Coupon updated successfully!', 'success');
-      loadData();
-    } catch (err: any) {
-      triggerToast(err.message, 'error');
-    }
-  };
-
-  const handleCouponDelete = async (id: string) => {
-    setConfirmModal({
-      message: 'Are you sure you want to delete this coupon? This action cannot be reverted.',
-      onConfirm: async () => {
-        try {
-          const res = await fetch(`${apiUrl}/coupons/${id}`, {
-            method: 'DELETE',
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (!res.ok) throw new Error('Coupon deletion failed');
-          triggerToast('Coupon deleted successfully!', 'success');
-          loadData();
-        } catch (err: any) {
-          triggerToast(err.message, 'error');
-        } finally {
-          setConfirmModal(null);
-        }
-      },
-    });
-  };
-
-  // Brand config Handler
-  const handleSaveBrand = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const res = await fetch(`${apiUrl}/brands/${selectedBrandId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          name: brandForm.name,
-          logoUrl: brandForm.logoUrl || null,
-          faviconUrl: brandForm.faviconUrl || null,
-          primaryColor: brandForm.primaryColor,
-          secondaryColor: brandForm.secondaryColor,
-          themeSettings: {
-            heroTitle: brandForm.heroTitle,
-            heroSubtitle: brandForm.heroSubtitle,
-          },
-        }),
-      });
-      if (!res.ok) throw new Error('Failed to update brand config');
-      triggerToast('Brand storefront settings saved!', 'success');
-      loadData();
-    } catch (err: any) {
-      triggerToast(err.message, 'error');
-    }
-  };
-
-  // Settings Save Handler
-  const handleSaveSettings = async (formData: any) => {
-    try {
-      const headers = {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      };
-      const promises = Object.entries(formData).map(([key, val]) =>
-        fetch(`${apiUrl}/settings`, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            key,
-            value: String(val),
-            level: selectedBrandId ? 'BRAND' : (key.includes('provider') ? 'GLOBAL' : 'SYSTEM'),
-            entityId: selectedBrandId || null,
-          }),
-        })
-      );
-      await Promise.all(promises);
-      triggerToast('Strategy configurations saved & synchronized!', 'success');
-      loadData();
-    } catch (err: any) {
-      triggerToast(err.message, 'error');
-    }
-  };
-
-  // Feature Flag Toggle Handler
-  const handleToggleFlag = async (name: string) => {
-    try {
-      const res = await fetch(`${apiUrl}/feature-flags/toggle`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ name }),
-      });
-      if (!res.ok) throw new Error('Failed to toggle feature flag');
-      triggerToast('Feature flag status updated!', 'success');
-      loadData();
-    } catch (err: any) {
-      triggerToast(err.message, 'error');
-    }
-  };
-
-  // Profile Update handler
-  const handleProfileUpdate = async (formData: any) => {
-    try {
-      const res = await fetch(`${apiUrl}/auth/profile`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(formData),
-      });
-      if (!res.ok) {
-        const errBody = await res.json();
-        throw new Error(errBody.message || 'Profile update failed');
+      if (!res.ok) throw new Error('Invalid email or password');
+      const data = await res.json();
+      const accessToken = data.data?.accessToken || data.accessToken;
+      if (accessToken) {
+        setToken(accessToken);
+        localStorage.setItem('commerza_admin_token', accessToken);
+        triggerToast('Welcome back, Admin!', 'success');
       }
-      triggerToast('Admin profile settings updated successfully!', 'success');
-      loadData();
-      return true;
     } catch (err: any) {
       triggerToast(err.message, 'error');
-      return false;
     }
+  };
+
+  const handleLogout = () => {
+    setToken(null);
+    localStorage.removeItem('commerza_admin_token');
   };
 
   if (!token) {
     return (
       <LoginForm
         email={email}
-        setEmail={setEmail}
         password={password}
+        setEmail={setEmail}
         setPassword={setPassword}
         onSubmit={handleLogin}
       />
     );
   }
 
-  const menuItems: { id: TabId; label: string }[] = [
-    { id: 'dashboard', label: 'Dashboard' },
-    { id: 'products', label: 'Digital Products' },
-    { id: 'orders', label: 'Order Logs' },
-    { id: 'customers', label: 'Customer Directory' },
-    { id: 'coupons', label: 'Promo Coupons' },
-    { id: 'brand', label: 'Brand Config' },
-    { id: 'settings', label: 'Providers settings' },
-    { id: 'feature_flags', label: 'Feature Flags' },
-    { id: 'analytics', label: 'Analytics' },
-    { id: 'audit_logs', label: 'Audit Trail Logs' },
-    { id: 'profile', label: 'Admin Profile' },
+  const tabs: { id: TabId; label: string; icon: string }[] = [
+    { id: 'dashboard', label: 'Overview', icon: '📊' },
+    { id: 'analytics', label: 'Analytics', icon: '📈' },
+    { id: 'products', label: 'Products', icon: '📦' },
+    { id: 'categories', label: 'Categories', icon: '🗂️' },
+    { id: 'orders', label: 'Orders', icon: '🛍️' },
+    { id: 'customers', label: 'Customers', icon: '👥' },
+    { id: 'coupons', label: 'Coupons', icon: '🏷️' },
+    { id: 'brand', label: 'Brand & Store', icon: '🎨' },
+    { id: 'settings', label: 'Providers', icon: '⚙️' },
+    { id: 'feature_flags', label: 'Feature Flags', icon: '🚩' },
+    { id: 'audit_logs', label: 'Audit Trail', icon: '🛡️' },
+    { id: 'profile', label: 'Profile Settings', icon: '👤' },
   ];
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-background relative">
-      {/* Premium Toast Notification */}
+    <div className="flex flex-col min-h-screen bg-background text-foreground font-sans">
+      {/* Toast Notification */}
       {toast && (
-        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-top-4 duration-300 font-semibold border text-sm ${
-          toast.type === 'success' 
-            ? 'bg-green-600 border-green-500 text-white' 
-            : 'bg-red-600 border-red-500 text-white'
-        }`}>
+        <div
+          className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 border text-sm font-semibold transition-all duration-300 ${
+            toast.type === 'success'
+              ? 'bg-emerald-600 text-white border-emerald-500 shadow-emerald-900/30'
+              : 'bg-red-600 text-white border-red-500 shadow-red-900/30'
+          }`}
+        >
           <span>{toast.type === 'success' ? '✓' : '⚠️'}</span>
           <span>{toast.message}</span>
-          <button 
-            onClick={() => setToast(null)} 
-            className="ml-4 font-bold bg-white/20 hover:bg-white/30 w-5 h-5 rounded-full flex items-center justify-center transition-colors text-[10px] cursor-pointer"
-          >
-            ✕
-          </button>
         </div>
       )}
 
-      {/* Premium Confirm Modal */}
+      {/* Confirmation Modal */}
       {confirmModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-card border border-border w-full max-w-sm rounded-2xl shadow-xl p-6 text-center animate-in fade-in zoom-in-95 duration-200">
@@ -512,137 +158,195 @@ export default function AdminPage() {
             <p className="text-sm text-foreground/75 mb-6">{confirmModal.message}</p>
             <div className="flex gap-3 justify-center">
               <button
+                onClick={() => setConfirmModal(null)}
+                className="bg-card hover:bg-border text-foreground border border-border font-semibold py-2 px-4 rounded-lg transition-colors text-sm cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
                 onClick={confirmModal.onConfirm}
                 className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-5 rounded-lg transition-colors text-sm cursor-pointer"
               >
-                Confirm
-              </button>
-              <button
-                onClick={() => setConfirmModal(null)}
-                className="bg-foreground/10 hover:bg-foreground/20 text-foreground font-medium py-2 px-5 rounded-lg transition-colors text-sm cursor-pointer"
-              >
-                Cancel
+                Proceed
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Mobile Top Header */}
-      <header className="md:hidden w-full bg-card border-b border-border px-6 py-4 flex items-center justify-between z-30">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white font-bold">
-            C
+      {/* Top Navbar */}
+      <header className="sticky top-0 z-40 bg-card border-b border-border px-4 py-3 flex items-center justify-between shadow-sm">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden p-2 hover:bg-border rounded-lg text-foreground"
+          >
+            ☰
+          </button>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center font-bold text-white shadow-sm">
+              C
+            </div>
+            <div>
+              <h1 className="font-extrabold text-sm tracking-tight text-foreground flex items-center gap-2">
+                Commerza Control Center
+                <span className="bg-primary/10 text-primary text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">
+                  Staff v1.0
+                </span>
+              </h1>
+            </div>
           </div>
-          <span className="font-extrabold text-foreground">Commerza Admin</span>
         </div>
-        <button
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="text-foreground hover:bg-foreground/5 p-2 rounded-lg transition-colors cursor-pointer text-sm font-semibold"
-        >
-          {mobileMenuOpen ? '✕ Close' : '☰ Menu'}
-        </button>
+
+        <div className="flex items-center gap-4">
+          <button
+            onClick={loadData}
+            title="Refresh Storefront Metrics"
+            disabled={loadingData}
+            className="text-foreground/75 hover:text-foreground text-xs flex items-center gap-1.5 bg-border/40 px-2.5 py-1.5 rounded-md hover:bg-border transition-colors cursor-pointer"
+          >
+            <span className={loadingData ? 'animate-spin inline-block' : ''}>🔄</span>
+            <span className="hidden sm:inline">Refresh Data</span>
+          </button>
+          <div className="flex items-center gap-2 border-l border-border pl-4">
+            <div className="w-7 h-7 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs font-bold">
+              {adminUser?.name?.charAt(0) || 'A'}
+            </div>
+            <span className="text-xs font-medium text-foreground/80 hidden sm:inline">
+              {adminUser?.name || 'Administrator'}
+            </span>
+            <button
+              onClick={handleLogout}
+              className="text-xs text-red-500 hover:text-red-400 font-semibold ml-2 cursor-pointer"
+            >
+              Sign out
+            </button>
+          </div>
+        </div>
       </header>
 
-      {/* Sidebar */}
-      <aside className={`${
-        mobileMenuOpen ? 'block' : 'hidden'
-      } md:block w-full md:w-64 bg-card border-r border-border p-6 flex flex-col gap-6 z-20 absolute md:relative inset-y-0 left-0 pt-20 md:pt-6 shadow-xl md:shadow-none`}>
-        <div className="hidden md:flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white font-bold">
-            C
-          </div>
-          <span className="font-extrabold text-lg text-foreground truncate">Commerza Admin</span>
-        </div>
-        <nav className="flex flex-col gap-1 overflow-y-auto max-h-[70vh] pr-1">
-          {menuItems.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => {
-                setActiveTab(tab.id);
-                setMobileMenuOpen(false);
-              }}
-              className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                activeTab === tab.id
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-foreground/75 hover:bg-foreground/5'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </nav>
-        <button
-          onClick={() => {
-            localStorage.removeItem('commerza_admin_token');
-            setToken(null);
-          }}
-          className="mt-auto w-full border border-border hover:bg-foreground/5 text-foreground font-medium py-2 rounded-lg transition-colors text-sm cursor-pointer"
+      {/* Dashboard Main Layout */}
+      <div className="flex flex-1">
+        {/* Sidebar Nav */}
+        <aside
+          className={`fixed md:sticky top-[57px] left-0 h-[calc(100vh-57px)] w-60 bg-card border-r border-border p-3 flex flex-col justify-between z-30 transition-transform duration-200 ${
+            mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+          }`}
         >
-          Sign Out
-        </button>
-      </aside>
+          <nav className="space-y-1">
+            <div className="px-3 py-2 text-[10px] font-bold text-foreground/50 uppercase tracking-wider">
+              Management
+            </div>
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  setMobileMenuOpen(false);
+                }}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-xs transition-all cursor-pointer ${
+                  activeTab === tab.id
+                    ? 'bg-primary text-white shadow-md shadow-primary/20 font-bold'
+                    : 'text-foreground/75 hover:bg-border/60 hover:text-foreground'
+                }`}
+              >
+                <span>{tab.icon}</span>
+                <span>{tab.label}</span>
+              </button>
+            ))}
+          </nav>
 
-      {/* Main Area */}
-      <main className="flex-1 p-6 md:p-8 overflow-y-auto">
-        {activeTab === 'dashboard' && (
-          <DashboardTab 
-            orders={orders} 
-            products={products} 
-            customers={customers} 
-            loading={loadingData}
-            onRefresh={loadData}
-          />
-        )}
-        {activeTab === 'products' && (
-          <ProductsTab
-            products={products}
-            onCreate={handleProductCreate}
-            onUpdate={handleProductUpdate}
-            onDelete={handleProductDelete}
-          />
-        )}
-        {activeTab === 'orders' && (
-          <OrdersTab 
-            orders={orders} 
-            onFetchDetails={handleFetchOrderDetails} 
-            onResendEmail={handleResendEmail}
-            onRegenerateLink={handleRegenerateLink}
-          />
-        )}
-        {activeTab === 'customers' && (
-          <CustomersTab customers={customers} onToggleStatus={handleToggleCustomerStatus} />
-        )}
-        {activeTab === 'coupons' && (
-          <CouponsTab
-            coupons={coupons}
-            onCreate={handleCouponCreate}
-            onUpdate={handleCouponUpdate}
-            onDelete={handleCouponDelete}
-          />
-        )}
-        {activeTab === 'brand' && (
-          <BrandTab brandForm={brandForm} setBrandForm={setBrandForm} onSubmit={handleSaveBrand} />
-        )}
-        {activeTab === 'settings' && (
-          <ProvidersTab settings={settings} loading={loadingData} brandId={selectedBrandId} onSubmit={handleSaveSettings} />
-        )}
-        {activeTab === 'feature_flags' && (
-          <FeatureFlagsTab flags={flags} onToggle={handleToggleFlag} />
-        )}
-        {activeTab === 'analytics' && (
-          <AnalyticsTab 
-            orders={orders} 
-            products={products} 
-            loading={loadingData}
-            onRefresh={loadData}
-          />
-        )}
-        {activeTab === 'audit_logs' && <AuditLogsTab logs={auditLogs} />}
-        {activeTab === 'profile' && (
-          <ProfileTab adminUser={adminUser} onUpdate={handleProfileUpdate} />
-        )}
-      </main>
+          <div className="p-3 bg-background rounded-xl border border-border text-[11px] text-foreground/60 text-center">
+            Single-Instance Engine
+          </div>
+        </aside>
+
+        {/* Content Viewport */}
+        <main className="flex-1 p-6 md:p-8 max-w-7xl overflow-x-hidden">
+          {activeTab === 'dashboard' && (
+            <DashboardTab
+              orders={orders}
+              products={products}
+              customers={customers}
+              loading={loadingData}
+              onRefresh={loadData}
+            />
+          )}
+          {activeTab === 'analytics' && (
+            <AnalyticsTab
+              orders={orders}
+              products={products}
+              loading={loadingData}
+              onRefresh={loadData}
+            />
+          )}
+          {activeTab === 'products' && (
+            <ProductsTab
+              products={products}
+              categories={categories}
+              brandId={selectedBrandId}
+              onCreateProduct={handleCreateProduct}
+              onDeleteProduct={handleDeleteProduct}
+              onTogglePublish={handleTogglePublish}
+            />
+          )}
+          {activeTab === 'categories' && (
+            <CategoriesTab
+              categories={categories}
+              brandId={selectedBrandId}
+              onCreateCategory={handleCreateCategory}
+              onDeleteCategory={async (id) => handleDeleteCategory(id)}
+            />
+          )}
+          {activeTab === 'orders' && (
+            <OrdersTab
+              orders={orders}
+              onFetchDetails={handleFetchOrderDetails}
+              onResendEmail={handleResendEmail}
+              onRegenerateLink={handleRegenerateLink}
+            />
+          )}
+          {activeTab === 'customers' && (
+            <CustomersTab
+              customers={customers}
+              onToggleStatus={handleCustomerStatusToggle}
+            />
+          )}
+          {activeTab === 'coupons' && (
+            <CouponsTab
+              coupons={coupons}
+              onCreate={handleCreateCoupon}
+              onUpdate={handleCouponUpdate}
+              onDelete={handleDeleteCoupon}
+            />
+          )}
+          {activeTab === 'brand' && (
+            <BrandTab
+              brandForm={brandForm}
+              setBrandForm={setBrandForm}
+              onSubmit={handleBrandSave}
+            />
+          )}
+          {activeTab === 'settings' && (
+            <ProvidersTab
+              settings={settings}
+              loading={loadingData}
+              brandId={selectedBrandId}
+              onSubmit={handleSaveSettings}
+            />
+          )}
+          {activeTab === 'feature_flags' && (
+            <FeatureFlagsTab flags={flags} onToggle={handleToggleFlag} />
+          )}
+          {activeTab === 'audit_logs' && <AuditLogsTab logs={auditLogs} />}
+          {activeTab === 'profile' && (
+            <ProfileTab
+              adminUser={adminUser}
+              onUpdate={handleProfileUpdate}
+            />
+          )}
+        </main>
+      </div>
     </div>
   );
 }

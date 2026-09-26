@@ -13,6 +13,17 @@ export class OrderRepository {
     });
   }
 
+  async findManyByCustomerEmail(email: string, brandId?: string) {
+    return this.prisma.order.findMany({
+      where: {
+        customer: { email: email.toLowerCase() },
+        ...(brandId ? { brandId } : {}),
+      },
+      include: { product: true, customer: true, brand: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   async findById(id: string) {
     return this.prisma.order.findUnique({
       where: { id },

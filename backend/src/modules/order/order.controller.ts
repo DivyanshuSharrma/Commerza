@@ -2,6 +2,7 @@ import { Controller, Post, Get, Param, Query, Body, UseGuards, ForbiddenExceptio
 import { OrderQueryService } from './order-query.service';
 import { OrderCommandService } from './order-command.service';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { RecoverOrderDto } from './dto/recover-order.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { RequirePermissions } from '../auth/permissions.decorator';
@@ -23,6 +24,13 @@ export class OrderController {
   @ApiOperation({ summary: 'Initiate digital checkout flow' })
   checkout(@Body() createOrderDto: CreateOrderDto) {
     return this.orderCommandService.checkout(createOrderDto);
+  }
+
+  @Post('recover')
+  @ApiOperation({ summary: 'Customer order lookup & recovery (resends download links to verified customer email)' })
+  recover(@Body() dto: RecoverOrderDto) {
+    this.logger.log(`Customer requested order recovery for email: ${dto.email}`);
+    return this.orderCommandService.recoverOrdersByEmail(dto.email, dto.brandId);
   }
 
   @Post('mock-fulfill/:id')

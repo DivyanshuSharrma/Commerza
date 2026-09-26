@@ -9,6 +9,7 @@ import { UserRepository } from './repositories/user.repository';
 import { RoleRepository } from './repositories/role.repository';
 import { CouponRepository } from './repositories/coupon.repository';
 import { AuditLogRepository } from './repositories/audit-log.repository';
+import { CategoryRepository } from './repositories/category.repository';
 import { TransactionService } from './transaction.service';
 
 @Module({
@@ -23,6 +24,7 @@ import { TransactionService } from './transaction.service';
     RoleRepository,
     CouponRepository,
     AuditLogRepository,
+    CategoryRepository,
     TransactionService,
   ],
   exports: [
@@ -36,6 +38,7 @@ import { TransactionService } from './transaction.service';
     RoleRepository,
     CouponRepository,
     AuditLogRepository,
+    CategoryRepository,
     TransactionService,
   ],
 })
