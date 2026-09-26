@@ -19,13 +19,19 @@ export function useAdminData(token: string | null) {
   const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
 
   const [brandForm, setBrandForm] = useState({
-    name: 'Commerza Digital Store',
+    name: 'Commerza Studio',
     logoUrl: '',
     faviconUrl: '',
     primaryColor: '#4f46e5',
     secondaryColor: '#06b6d4',
+    heroBadge: '',
     heroTitle: '',
     heroSubtitle: '',
+    creatorBio: '',
+    creatorRole: '',
+    creatorLocation: '',
+    skills: '',
+    hireEmail: '',
   });
 
   const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api') + '/v1';
@@ -36,6 +42,19 @@ export function useAdminData(token: string | null) {
       setToast((prev) => (prev?.message === message ? null : prev));
     }, 4000);
   };
+
+  const authFetch = useCallback(
+    (path: string, options: RequestInit = {}) =>
+      fetch(`${apiUrl}${path}`, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          ...options.headers,
+        },
+      }),
+    [apiUrl, token]
+  );
 
   const loadData = useCallback(async () => {
     if (!token) return;
@@ -63,61 +82,36 @@ export function useAdminData(token: string | null) {
         if (data.length > 0) {
           const b = data[0];
           setSelectedBrandId(b.id);
+          const t = b.themeSettings || {};
           setBrandForm({
-            name: b.name,
+            name: b.name || '',
             logoUrl: b.logoUrl || '',
             faviconUrl: b.faviconUrl || '',
-            primaryColor: b.primaryColor,
-            secondaryColor: b.secondaryColor,
-            heroTitle: b.themeSettings?.heroTitle || '',
-            heroSubtitle: b.themeSettings?.heroSubtitle || '',
+            primaryColor: b.primaryColor || '#4f46e5',
+            secondaryColor: b.secondaryColor || '#06b6d4',
+            heroBadge: t.heroBadge || '',
+            heroTitle: t.heroTitle || '',
+            heroSubtitle: t.heroSubtitle || '',
+            creatorBio: t.creatorBio || '',
+            creatorRole: t.creatorRole || '',
+            creatorLocation: t.creatorLocation || '',
+            skills: Array.isArray(t.skills) ? t.skills.join(', ') : t.skills || '',
+            hireEmail: t.hireEmail || '',
           });
         }
       }
 
-      if (prodRes.ok) {
-        const body = await prodRes.json();
-        setProducts(body.data || []);
-      }
-
-      if (catRes.ok) {
-        const body = await catRes.json();
-        setCategories(body.data || []);
-      }
-
-      if (orderRes.ok) {
-        const body = await orderRes.json();
-        setOrders(body.data || []);
-      }
-
-      if (custRes.ok) {
-        const body = await custRes.json();
-        setCustomers(body.data || []);
-      }
-
-      if (couponRes.ok) {
-        const body = await couponRes.json();
-        setCoupons(body.data || []);
-      }
-
-      if (settingsRes.ok) {
-        const body = await settingsRes.json();
-        setSettings(body.data || []);
-      }
-
-      if (flagsRes.ok) {
-        const body = await flagsRes.json();
-        setFlags(body.data || {});
-      }
-
-      if (auditRes.ok) {
-        const body = await auditRes.json();
-        setAuditLogs(body.data || []);
-      }
-
+      if (prodRes.ok) setProducts((await prodRes.json()).data || []);
+      if (catRes.ok) setCategories((await catRes.json()).data || []);
+      if (orderRes.ok) setOrders((await orderRes.json()).data || []);
+      if (custRes.ok) setCustomers((await custRes.json()).data || []);
+      if (couponRes.ok) setCoupons((await couponRes.json()).data || []);
+      if (settingsRes.ok) setSettings((await settingsRes.json()).data || []);
+      if (flagsRes.ok) setFlags((await flagsRes.json()).data || {});
+      if (auditRes.ok) setAuditLogs((await auditRes.json()).data || []);
       if (profileRes.ok) {
-        const body = await profileRes.json();
-        setAdminUser(body.data || body);
+        const prof = await profileRes.json();
+        setAdminUser(prof.data || prof);
       }
     } catch (err) {
       console.error('Error synchronizing database metrics:', err);
@@ -133,18 +127,8 @@ export function useAdminData(token: string | null) {
   // Product Operations
   const handleCreateProduct = async (productData: any) => {
     try {
-      const res = await fetch(`${apiUrl}/products`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(productData),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => null);
-        throw new Error(err?.message || 'Failed to create product');
-      }
+      const res = await authFetch('/products', { method: 'POST', body: JSON.stringify(productData) });
+      if (!res.ok) throw new Error((await res.json().catch(() => null))?.message || 'Failed to create product');
       triggerToast('Product created successfully!', 'success');
       loadData();
     } catch (err: any) {
@@ -155,13 +139,10 @@ export function useAdminData(token: string | null) {
 
   const handleDeleteProduct = (productId: string) => {
     setConfirmModal({
-      message: 'Are you sure you want to delete this product? This action cannot be undone.',
+      message: 'Delete this product? This action cannot be undone.',
       onConfirm: async () => {
         try {
-          const res = await fetch(`${apiUrl}/products/${productId}`, {
-            method: 'DELETE',
-            headers: { Authorization: `Bearer ${token}` },
-          });
+          const res = await authFetch(`/products/${productId}`, { method: 'DELETE' });
           if (!res.ok) throw new Error('Failed to delete product');
           triggerToast('Product deleted successfully', 'success');
           loadData();
@@ -177,12 +158,8 @@ export function useAdminData(token: string | null) {
   const handleTogglePublish = async (productId: string, currentStatus: string) => {
     const nextStatus = currentStatus === 'ACTIVE' ? 'DRAFT' : 'ACTIVE';
     try {
-      const res = await fetch(`${apiUrl}/products/${productId}`, {
+      const res = await authFetch(`/products/${productId}`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({ status: nextStatus }),
       });
       if (!res.ok) throw new Error('Status update failed');
@@ -195,9 +172,7 @@ export function useAdminData(token: string | null) {
 
   // Order Operations
   const handleFetchOrderDetails = async (id: string) => {
-    const res = await fetch(`${apiUrl}/orders/${id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const res = await authFetch(`/orders/${id}`);
     if (!res.ok) throw new Error('Failed to fetch order details');
     const body = await res.json();
     return body.data || body;
@@ -205,12 +180,9 @@ export function useAdminData(token: string | null) {
 
   const handleResendEmail = async (id: string) => {
     try {
-      const res = await fetch(`${apiUrl}/orders/${id}/resend-email`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await authFetch(`/orders/${id}/resend-email`, { method: 'POST' });
       if (!res.ok) throw new Error('Failed to resend fulfillment email');
-      triggerToast('Fulfillment receipt email resent successfully!', 'success');
+      triggerToast('Fulfillment email resent successfully!', 'success');
     } catch (err: any) {
       triggerToast(err.message, 'error');
     }
@@ -218,11 +190,8 @@ export function useAdminData(token: string | null) {
 
   const handleRegenerateLink = async (id: string) => {
     try {
-      const res = await fetch(`${apiUrl}/orders/${id}/regenerate-link`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Failed to regenerate order link');
+      const res = await authFetch(`/orders/${id}/regenerate-link`, { method: 'POST' });
+      if (!res.ok) throw new Error('Failed to regenerate link');
       const body = await res.json();
       triggerToast('Download link regenerated successfully!', 'success');
       loadData();
@@ -237,12 +206,8 @@ export function useAdminData(token: string | null) {
   const handleCustomerStatusToggle = async (customerId: string, currentStatus: string) => {
     const nextStatus = currentStatus === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
     try {
-      const res = await fetch(`${apiUrl}/customers/${customerId}/status`, {
+      const res = await authFetch(`/customers/${customerId}/status`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({ status: nextStatus }),
       });
       if (!res.ok) throw new Error('Failed to update customer status');
@@ -256,18 +221,8 @@ export function useAdminData(token: string | null) {
   // Coupon Operations
   const handleCreateCoupon = async (couponData: any) => {
     try {
-      const res = await fetch(`${apiUrl}/coupons`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(couponData),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => null);
-        throw new Error(err?.message || 'Failed to create coupon');
-      }
+      const res = await authFetch('/coupons', { method: 'POST', body: JSON.stringify(couponData) });
+      if (!res.ok) throw new Error((await res.json().catch(() => null))?.message || 'Failed to create coupon');
       triggerToast('Coupon created successfully!', 'success');
       loadData();
     } catch (err: any) {
@@ -278,14 +233,7 @@ export function useAdminData(token: string | null) {
 
   const handleCouponUpdate = async (id: string, payload: any) => {
     try {
-      const res = await fetch(`${apiUrl}/coupons/${id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
+      const res = await authFetch(`/coupons/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
       if (!res.ok) throw new Error('Coupon update failed');
       triggerToast('Coupon updated successfully!', 'success');
       loadData();
@@ -296,13 +244,10 @@ export function useAdminData(token: string | null) {
 
   const handleDeleteCoupon = (couponId: string) => {
     setConfirmModal({
-      message: 'Are you sure you want to delete this coupon code?',
+      message: 'Delete this coupon code?',
       onConfirm: async () => {
         try {
-          const res = await fetch(`${apiUrl}/coupons/${couponId}`, {
-            method: 'DELETE',
-            headers: { Authorization: `Bearer ${token}` },
-          });
+          const res = await authFetch(`/coupons/${couponId}`, { method: 'DELETE' });
           if (!res.ok) throw new Error('Failed to delete coupon');
           triggerToast('Coupon deleted successfully', 'success');
           loadData();
@@ -318,18 +263,8 @@ export function useAdminData(token: string | null) {
   // Category Operations
   const handleCreateCategory = async (catData: any) => {
     try {
-      const res = await fetch(`${apiUrl}/categories`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(catData),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => null);
-        throw new Error(err?.message || 'Failed to create category');
-      }
+      const res = await authFetch('/categories', { method: 'POST', body: JSON.stringify(catData) });
+      if (!res.ok) throw new Error((await res.json().catch(() => null))?.message || 'Failed to create category');
       triggerToast('Category created successfully!', 'success');
       loadData();
     } catch (err: any) {
@@ -340,13 +275,10 @@ export function useAdminData(token: string | null) {
 
   const handleDeleteCategory = (categoryId: string) => {
     setConfirmModal({
-      message: 'Are you sure you want to delete this category?',
+      message: 'Delete this category?',
       onConfirm: async () => {
         try {
-          const res = await fetch(`${apiUrl}/categories/${categoryId}`, {
-            method: 'DELETE',
-            headers: { Authorization: `Bearer ${token}` },
-          });
+          const res = await authFetch(`/categories/${categoryId}`, { method: 'DELETE' });
           if (!res.ok) throw new Error('Failed to delete category');
           triggerToast('Category deleted successfully', 'success');
           loadData();
@@ -359,17 +291,17 @@ export function useAdminData(token: string | null) {
     });
   };
 
-  // Brand Operations
+  // Brand Operations (Full dynamic theme settings)
   const handleBrandSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedBrandId) return;
     try {
-      const res = await fetch(`${apiUrl}/brands/${selectedBrandId}`, {
+      const skillsArray = brandForm.skills
+        ? brandForm.skills.split(',').map((s) => s.trim()).filter(Boolean)
+        : [];
+
+      const res = await authFetch(`/brands/${selectedBrandId}`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           name: brandForm.name,
           logoUrl: brandForm.logoUrl || null,
@@ -377,13 +309,19 @@ export function useAdminData(token: string | null) {
           primaryColor: brandForm.primaryColor,
           secondaryColor: brandForm.secondaryColor,
           themeSettings: {
+            heroBadge: brandForm.heroBadge,
             heroTitle: brandForm.heroTitle,
             heroSubtitle: brandForm.heroSubtitle,
+            creatorBio: brandForm.creatorBio,
+            creatorRole: brandForm.creatorRole,
+            creatorLocation: brandForm.creatorLocation,
+            skills: skillsArray,
+            hireEmail: brandForm.hireEmail,
           },
         }),
       });
       if (!res.ok) throw new Error('Failed to save brand settings');
-      triggerToast('Brand configuration saved successfully!', 'success');
+      triggerToast('Brand & Portfolio configuration saved successfully!', 'success');
       loadData();
     } catch (err: any) {
       triggerToast(err.message, 'error');
@@ -393,15 +331,10 @@ export function useAdminData(token: string | null) {
   // Provider Settings
   const handleSaveSettings = async (formData: any) => {
     try {
-      const headers = {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      };
       await Promise.all(
         Object.entries(formData).map(([key, val]) =>
-          fetch(`${apiUrl}/settings`, {
+          authFetch('/settings', {
             method: 'POST',
-            headers,
             body: JSON.stringify({
               key,
               value: String(val),
@@ -421,14 +354,7 @@ export function useAdminData(token: string | null) {
   // Feature Flag Operations
   const handleToggleFlag = async (name: string) => {
     try {
-      const res = await fetch(`${apiUrl}/feature-flags/toggle`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ name }),
-      });
+      const res = await authFetch('/feature-flags/toggle', { method: 'POST', body: JSON.stringify({ name }) });
       if (!res.ok) throw new Error('Failed to toggle feature flag');
       triggerToast('Feature flag status updated!', 'success');
       loadData();
@@ -440,18 +366,8 @@ export function useAdminData(token: string | null) {
   // Profile Update
   const handleProfileUpdate = async (formData: any) => {
     try {
-      const res = await fetch(`${apiUrl}/auth/profile`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(formData),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.message || 'Profile update failed');
-      }
+      const res = await authFetch('/auth/profile', { method: 'PATCH', body: JSON.stringify(formData) });
+      if (!res.ok) throw new Error((await res.json().catch(() => null))?.message || 'Profile update failed');
       triggerToast('Profile updated successfully!', 'success');
       loadData();
       return true;
