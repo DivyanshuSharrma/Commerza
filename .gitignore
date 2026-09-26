@@ -41,3 +41,7 @@ Thumbs.db
 .agents/
 .qodo/
 
+# Internal documentation
+docs/
+
+
