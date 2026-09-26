@@ -1,0 +1,251 @@
+datasource db {
+  provider = "mysql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+// User represents admin/staff members
+model User {
+  id        String     @id @default(uuid())
+  email     String     @unique
+  password  String
+  name      String
+  roleId    String
+  role      Role       @relation(fields: [roleId], references: [id])
+  status    UserStatus @default(ACTIVE)
+  auditLogs AuditLog[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@index([roleId])
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+// Role defines user RBAC permissions
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique // e.g. "SUPER_ADMIN", "BRAND_ADMIN", "SUPPORT"
+  permissions Json     // List of action strings: ["product:create", "settings:write", etc.]
+  users       User[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Brand represents each white-labeled storefront/tenant
+model Brand {
+  id              String         @id @default(uuid())
+  name            String
+  subdomain       String         @unique
+  customDomain    String?        @unique
+  logoUrl         String?
+  faviconUrl      String?
+  primaryColor    String         @default("#4f46e5") // Tailwind indigo-600 default
+  secondaryColor  String         @default("#06b6d4") // Tailwind cyan-500 default
+  themeSettings   Json?          // General styling custom configuration
+  status          BrandStatus    @default(ACTIVE)
+  products        Product[]
+  orders          Order[]
+  customers       Customer[]
+  categories      Category[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+}
+
+enum BrandStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+// Setting handles hierarchical configurations
+// Priority: Order Override (entityId = orderId) -> Product Settings (entityId = productId) -> Brand Settings (entityId = brandId) -> Global Settings (level = GLOBAL) -> System Default (level = SYSTEM)
+model Setting {
+  id        String       @id @default(uuid())
+  key       String
+  value     String       @db.Text
+  level     SettingLevel
+  entityId  String?      // References Brand, Product, or Order depending on level
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@unique([key, level, entityId])
+}
+
+enum SettingLevel {
+  SYSTEM
+  GLOBAL
+  BRAND
+  PRODUCT
+  ORDER
+}
+
+// Product delivery configs, catalogs, and metadata
+model Product {
+  id             String          @id @default(uuid())
+  brandId        String
+  brand          Brand           @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  title          String
+  slug           String
+  description    String          @db.Text
+  price          Decimal         @db.Decimal(10, 2)
+  salePrice      Decimal?        @db.Decimal(10, 2)
+  status         ProductStatus   @default(DRAFT)
+  deliveryType   DeliveryType
+  deliveryConfig Json            // Pointers or links. E.g. { filePath: "path/to/zip" } or { url: "http://drive.com/1" }
+  shortDescription String?       @db.Text
+  features       String?         @db.Text
+  specifications String?         @db.Text
+  whatsIncluded  String?         @db.Text
+  seoTitle       String?
+  seoDescription String?         @db.Text
+  seoKeywords    String?
+  seoOgImage     String?
+  categories     Category[]      @relation("ProductCategories")
+  media          ProductMedia[]
+  orders         Order[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@unique([brandId, slug])
+  @@index([brandId])
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum DeliveryType {
+  INTERNAL_FILE
+  EXTERNAL_URL
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  brandId     String
+  brand       Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  name        String
+  slug        String
+  description String?   @db.Text
+  products    Product[] @relation("ProductCategories")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([brandId, slug])
+  @@index([brandId])
+}
+
+model ProductMedia {
+  id        String   @id @default(uuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  isPrimary Boolean  @default(false)
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([productId])
+}
+
+// Customer model representing buyers
+model Customer {
+  id        String         @id @default(uuid())
+  brandId   String
+  brand     Brand          @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  email     String
+  name      String?
+  status    CustomerStatus @default(ACTIVE)
+  orders    Order[]
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@unique([brandId, email])
+  @@index([brandId])
+}
+
+enum CustomerStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+// Order model tracks transactions and links download tokens
+model Order {
+  id              String         @id @default(uuid())
+  brandId         String
+  brand           Brand          @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  customerId      String
+  customer        Customer       @relation(fields: [customerId], references: [id])
+  productId       String
+  product         Product        @relation(fields: [productId], references: [id])
+  status          OrderStatus    @default(PENDING)
+  amountPaid      Decimal        @db.Decimal(10, 2)
+  paymentProvider String?        // "STRIPE", "RAZORPAY", etc.
+  paymentId       String?        // Session or transaction ID
+  downloadToken   String         @unique
+  downloadLimit   Int            @default(5)
+  downloadCount   Int            @default(0)
+  expiresAt       DateTime
+  downloadLogs    DownloadLog[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([brandId])
+  @@index([customerId])
+  @@index([productId])
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+// DownloadLog captures secure download attempts
+model DownloadLog {
+  id           String   @id @default(uuid())
+  orderId      String
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  ipAddress    String?
+  userAgent    String?
+  success      Boolean
+  errorMessage String?
+  createdAt    DateTime @default(now())
+
+  @@index([orderId])
+}
+
+// AuditLog tracks system administrative activity
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  details   Json
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// Coupon system
+model Coupon {
+  id         String     @id @default(uuid())
+  code       String     @unique
+  discount   Decimal    @db.Decimal(10, 2) // absolute discount or percentage
+  isPercent  Boolean    @default(true)
+  expiresAt  DateTime?
+  usageLimit Int?
+  usageCount Int        @default(0)
+  active     Boolean    @default(true)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+}
