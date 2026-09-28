@@ -7,6 +7,7 @@ frontend/node_modules/
 .env
 .env.*
 !.env.example
+!.env.*.example
 backend/.env
 backend/.env.*
 !backend/.env.example
@@ -42,7 +43,6 @@ Thumbs.db
 .qodo/
 
 # Internal documentation
-docs/
 scratch_shots/
 
 
