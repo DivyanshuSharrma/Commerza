@@ -41,7 +41,8 @@ export function ReviewsTab({ brandId, token, triggerToast }: ReviewsTabProps) {
       });
       if (!res.ok) throw new Error('Failed to load reviews');
       const body = await res.json();
-      setReviews(body.data || []);
+      const list = Array.isArray(body?.data) ? body.data : body?.data?.data || [];
+      setReviews(list);
     } catch (err: any) {
       triggerToast(err.message, 'error');
     } finally {

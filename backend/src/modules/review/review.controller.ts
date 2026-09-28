@@ -22,11 +22,7 @@ export class ReviewController {
   @ApiOperation({ summary: 'Get approved reviews and aggregate stats for a product' })
   @ApiResponse({ status: 200, description: 'Reviews retrieved successfully' })
   async getProductReviews(@Param('productId') productId: string) {
-    const data = await this.reviewService.getProductReviews(productId);
-    return {
-      statusCode: HttpStatus.OK,
-      data,
-    };
+    return this.reviewService.getProductReviews(productId);
   }
 
   @Post()
@@ -34,23 +30,14 @@ export class ReviewController {
   @ApiOperation({ summary: 'Submit a new product review' })
   @ApiResponse({ status: 201, description: 'Review submitted successfully' })
   async createReview(@Body() dto: CreateReviewDto) {
-    const data = await this.reviewService.createReview(dto);
-    return {
-      statusCode: HttpStatus.CREATED,
-      message: 'Review posted successfully.',
-      data,
-    };
+    return this.reviewService.createReview(dto);
   }
 
   @Get('brand/:brandId')
   @ApiOperation({ summary: 'Get all reviews for brand moderation' })
   @ApiResponse({ status: 200, description: 'Brand reviews retrieved successfully' })
   async getBrandReviews(@Param('brandId') brandId: string) {
-    const data = await this.reviewService.getBrandReviews(brandId);
-    return {
-      statusCode: HttpStatus.OK,
-      data,
-    };
+    return this.reviewService.getBrandReviews(brandId);
   }
 
   @Patch(':id/status')
@@ -60,12 +47,7 @@ export class ReviewController {
     @Param('id') id: string,
     @Body() dto: UpdateReviewStatusDto,
   ) {
-    const data = await this.reviewService.updateReviewStatus(id, dto);
-    return {
-      statusCode: HttpStatus.OK,
-      message: 'Review status updated.',
-      data,
-    };
+    return this.reviewService.updateReviewStatus(id, dto);
   }
 
   @Delete(':id')
@@ -73,9 +55,6 @@ export class ReviewController {
   @ApiResponse({ status: 200, description: 'Review deleted successfully' })
   async deleteReview(@Param('id') id: string) {
     await this.reviewService.deleteReview(id);
-    return {
-      statusCode: HttpStatus.OK,
-      message: 'Review deleted successfully.',
-    };
+    return { success: true };
   }
 }

@@ -54,10 +54,11 @@ export function ProductReviews({ productId, brandId }: ProductReviewsProps) {
       const res = await fetch(`${apiUrl}/reviews/product/${productId}`, { cache: 'no-store' });
       if (!res.ok) return;
       const body = await res.json();
-      if (body.data) {
-        setReviews(body.data.reviews || []);
-        if (body.data.stats) {
-          setStats(body.data.stats);
+      const payload = body?.data?.data || body?.data || body;
+      if (payload) {
+        setReviews(payload.reviews || []);
+        if (payload.stats) {
+          setStats(payload.stats);
         }
       }
     } catch {
