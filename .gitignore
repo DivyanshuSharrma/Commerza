@@ -23,9 +23,29 @@ frontend/out/
 build/
 *.tsbuildinfo
 
-# Uploads & temporary directories
+# Uploads & user files
 backend/uploads/
+
+# Temporary files, caches & test artifacts
 scratch/
+scratch_shots/
+temp/
+tmp/
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*~
+.tempmediaStorage/
+.cache/
+.turbo/
+.eslintcache
+playwright-report/
+test-results/
+.playwright/
+coverage/
+.nyc_output/
 
 # Logs
 *.log
@@ -41,8 +61,5 @@ Thumbs.db
 # Agent & IDE workspace configurations
 .agents/
 .qodo/
-
-# Internal documentation
-scratch_shots/
 
 
