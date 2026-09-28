@@ -54,6 +54,7 @@ model Brand {
   orders          Order[]
   customers       Customer[]
   categories      Category[]
+  reviews         Review[]
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 }
@@ -109,6 +110,7 @@ model Product {
   categories     Category[]      @relation("ProductCategories")
   media          ProductMedia[]
   orders         Order[]
+  reviews        Review[]
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 
@@ -249,3 +251,31 @@ model Coupon {
   createdAt  DateTime   @default(now())
   updatedAt  DateTime   @updatedAt
 }
+
+// Product customer reviews and ratings
+model Review {
+  id              String       @id @default(uuid())
+  productId       String
+  product         Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  brandId         String
+  brand           Brand        @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  authorName      String
+  authorEmail     String
+  rating          Int          @default(5)
+  title           String?
+  comment         String       @db.Text
+  isVerifiedBuyer Boolean      @default(false)
+  status          ReviewStatus @default(APPROVED)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([productId])
+  @@index([brandId])
+}
+
+enum ReviewStatus {
+  APPROVED
+  PENDING
+  REJECTED
+}
+

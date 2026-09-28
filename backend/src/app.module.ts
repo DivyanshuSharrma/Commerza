@@ -25,6 +25,7 @@ import { CustomerModule } from './modules/customer/customer.module';
 import { CouponModule } from './modules/coupon/coupon.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { CategoryModule } from './modules/category/category.module';
+import { ReviewModule } from './modules/review/review.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { CategoryModule } from './modules/category/category.module';
     CouponModule,
     AuditModule,
     CategoryModule,
+    ReviewModule,
   ],
   controllers: [AppController],
   providers: [

@@ -10,6 +10,7 @@ import { RoleRepository } from './repositories/role.repository';
 import { CouponRepository } from './repositories/coupon.repository';
 import { AuditLogRepository } from './repositories/audit-log.repository';
 import { CategoryRepository } from './repositories/category.repository';
+import { ReviewRepository } from './repositories/review.repository';
 import { TransactionService } from './transaction.service';
 
 @Module({
@@ -25,6 +26,7 @@ import { TransactionService } from './transaction.service';
     CouponRepository,
     AuditLogRepository,
     CategoryRepository,
+    ReviewRepository,
     TransactionService,
   ],
   exports: [
@@ -39,6 +41,7 @@ import { TransactionService } from './transaction.service';
     CouponRepository,
     AuditLogRepository,
     CategoryRepository,
+    ReviewRepository,
     TransactionService,
   ],
 })

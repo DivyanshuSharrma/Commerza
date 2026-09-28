@@ -17,12 +17,14 @@ import { ProvidersTab } from './components/providers-tab';
 import { FeatureFlagsTab } from './components/feature-flags-tab';
 import { AuditLogsTab } from './components/audit-logs-tab';
 import { ProfileTab } from './components/profile-tab';
+import { ReviewsTab } from './components/reviews-tab';
 
 type TabId =
   | 'dashboard'
   | 'analytics'
   | 'products'
   | 'categories'
+  | 'reviews'
   | 'orders'
   | 'customers'
   | 'coupons'
@@ -140,6 +142,7 @@ export default function AdminPage() {
     { id: 'analytics', label: 'Analytics', icon: '📈' },
     { id: 'products', label: 'Products', icon: '📦' },
     { id: 'categories', label: 'Categories', icon: '🗂️' },
+    { id: 'reviews', label: 'Reviews', icon: '⭐' },
     { id: 'orders', label: 'Orders', icon: '🛍️' },
     { id: 'customers', label: 'Customers', icon: '👥' },
     { id: 'coupons', label: 'Coupons', icon: '🏷️' },
@@ -319,6 +322,13 @@ export default function AdminPage() {
               brandId={selectedBrandId}
               onCreateCategory={handleCreateCategory}
               onDeleteCategory={async (id) => handleDeleteCategory(id)}
+            />
+          )}
+          {activeTab === 'reviews' && (
+            <ReviewsTab
+              brandId={selectedBrandId}
+              token={token}
+              triggerToast={triggerToast}
             />
           )}
           {activeTab === 'orders' && (

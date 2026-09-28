@@ -6,6 +6,7 @@ import { PriceComponent } from '@/components/price-component';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { ProductGallery } from '@/components/product-gallery';
+import { ProductReviews } from '@/components/reviews/product-reviews';
 
 /* ─── Types ─────────────────────────────────────────── */
 interface ProductMedia {
@@ -271,6 +272,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
         </div>
       )}
 
+      {/* ── Customer Ratings & Reviews Section ─────────── */}
+      <ProductReviews productId={product.id} brandId={brand.id} />
+
       {/* ── Related Products ─────────────────────────────── */}
       {related.length > 0 && (
         <div className="border-t border-border/60 pt-12 animate-in fade-in duration-500">
@@ -299,14 +303,11 @@ export default async function ProductPage({ params }: ProductPageProps) {
                     </Link>
                     <div className="flex items-center justify-between">
                       <div>
-                        {hasSale ? (
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-foreground">₹{Number(p.salePrice).toFixed(2)}</span>
-                            <span className="text-xs line-through text-foreground/40">₹{Number(p.price).toFixed(2)}</span>
-                          </div>
-                        ) : (
-                          <PriceComponent price={p.price} priceClassName="text-lg" />
-                        )}
+                        <PriceComponent
+                          price={hasSale ? p.salePrice! : p.price}
+                          originalPrice={hasSale ? p.price : undefined}
+                          priceClassName="text-base font-bold text-foreground"
+                        />
                       </div>
                       <Link href={`/products/${p.slug}`} className="text-xs font-semibold text-primary hover:underline">
                         View →
