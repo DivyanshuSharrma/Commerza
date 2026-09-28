@@ -71,7 +71,7 @@ const API_STORAGE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/a
 
 function resolveMediaUrl(url: string): string {
   if (!url) return '';
-  if (url.startsWith('http')) return url;
+  if (url.startsWith('http') || url.startsWith('/')) return url;
   return `${API_STORAGE}${url}`;
 }
 
