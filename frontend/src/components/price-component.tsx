@@ -1,4 +1,6 @@
-import { formatPrice } from '@/utils/formatters';
+'use client';
+
+import { useCurrency } from '@/features/currency/currency-context';
 
 interface PriceComponentProps {
   price: string | number;
@@ -8,6 +10,8 @@ interface PriceComponentProps {
 }
 
 export function PriceComponent({ price, originalPrice, className = '', priceClassName = '' }: PriceComponentProps) {
+  const { formatPrice } = useCurrency();
+
   return (
     <div className={`flex items-baseline gap-2 ${className}`}>
       <span className={`text-2xl font-extrabold text-primary ${priceClassName}`}>

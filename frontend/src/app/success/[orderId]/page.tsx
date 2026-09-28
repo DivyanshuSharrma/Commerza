@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { formatPrice } from '@/utils/formatters';
+import { useCurrency } from '@/features/currency/currency-context';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +29,7 @@ interface Order {
 export default function SuccessPage() {
   const params = useParams();
   const router = useRouter();
+  const { formatPrice } = useCurrency();
   const orderId = params.orderId as string;
 
   const [order, setOrder] = React.useState<Order | null>(null);

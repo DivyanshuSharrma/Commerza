@@ -4,7 +4,7 @@ import * as React from 'react';
 import { Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { isValidEmail } from '@/utils/assertions';
-import { formatPrice } from '@/utils/formatters';
+import { useCurrency } from '@/features/currency/currency-context';
 import { loadRazorpayScript } from '@/features/checkout/razorpay-loader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +23,7 @@ interface Product {
 function CheckoutForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { formatPrice } = useCurrency();
   const productId = searchParams.get('productId');
 
   const [product, setProduct] = React.useState<Product | null>(null);

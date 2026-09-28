@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import { PriceComponent } from '@/components/price-component';
 
 interface Product {
   id: string;
@@ -72,13 +73,12 @@ export function ProductInspectModal({ product, onClose }: ProductInspectModalPro
         <div className="flex items-center justify-between bg-surface-muted/60 border border-border/60 p-4 rounded-2xl">
           <div>
             <div className="text-[10px] font-mono text-foreground/50 uppercase">Acquisition Price</div>
-            <div className="text-2xl font-black text-foreground flex items-baseline gap-2">
-              ${product.salePrice || product.price}
-              {product.salePrice && (
-                <span className="text-sm font-normal text-foreground/40 line-through">
-                  ${product.price}
-                </span>
-              )}
+            <div className="mt-1">
+              <PriceComponent
+                price={product.salePrice || product.price}
+                originalPrice={product.salePrice ? product.price : undefined}
+                priceClassName="text-foreground text-2xl"
+              />
             </div>
           </div>
           <div className="text-right">

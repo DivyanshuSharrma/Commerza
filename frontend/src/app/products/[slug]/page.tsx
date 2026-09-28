@@ -171,20 +171,16 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
           {/* Pricing */}
           <div className="flex items-end gap-3 mb-6">
-            {hasSalePrice ? (
-              <>
-                <span className="text-4xl font-extrabold text-foreground">
-                  ₹{Number(product.salePrice).toFixed(2)}
-                </span>
-                <span className="text-xl line-through text-foreground/40 mb-1">
-                  ₹{Number(product.price).toFixed(2)}
-                </span>
-                <span className="bg-green-500/15 text-green-600 text-xs font-bold px-2 py-1 rounded-lg mb-1">
-                  {discountPct}% OFF
-                </span>
-              </>
-            ) : (
-              <PriceComponent price={product.price} className="mb-0" priceClassName="text-4xl" />
+            <PriceComponent
+              price={hasSalePrice ? product.salePrice! : product.price}
+              originalPrice={hasSalePrice ? product.price : undefined}
+              className="mb-0"
+              priceClassName="text-4xl font-extrabold text-foreground"
+            />
+            {hasSalePrice && (
+              <span className="bg-emerald-500/15 text-emerald-500 text-xs font-bold px-2 py-1 rounded-lg mb-1">
+                {discountPct}% OFF
+              </span>
             )}
           </div>
 
@@ -193,7 +189,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
             href={`/checkout?productId=${product.id}`}
             className="w-full sm:w-auto inline-flex items-center justify-center rounded-xl text-sm font-bold bg-primary text-white hover:opacity-90 active:scale-[0.98] px-8 py-3.5 cursor-pointer shadow-md transition-all text-center mb-8"
           >
-            Buy Now — {hasSalePrice ? `₹${Number(product.salePrice).toFixed(2)}` : `₹${Number(product.price).toFixed(2)}`}
+            Acquire License & Instant Access
           </Link>
 
           {/* Trust badges */}

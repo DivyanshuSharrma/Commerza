@@ -4,6 +4,7 @@ import "./globals.css";
 import { getBrandContext } from "@/features/brand/brand-context.resolver";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
+import { CurrencyProvider } from "@/features/currency/currency-context";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -45,11 +46,13 @@ export default async function RootLayout({
     <html lang="en" style={themeStyles} suppressHydrationWarning>
       <head />
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}>
-        <Header brand={brand} />
-        <main className="flex-1 flex flex-col bg-background text-foreground">
-          {children}
-        </main>
-        <Footer brand={brand} />
+        <CurrencyProvider>
+          <Header brand={brand} />
+          <main className="flex-1 flex flex-col bg-background text-foreground">
+            {children}
+          </main>
+          <Footer brand={brand} />
+        </CurrencyProvider>
       </body>
     </html>
   );

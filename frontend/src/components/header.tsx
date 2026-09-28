@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { BrandData } from '@/features/brand/brand-context.resolver';
 import { ThemeToggle } from './portfolio/theme-toggle';
+import { CurrencySelector } from './currency-selector';
 
 interface HeaderProps {
   brand: BrandData;
@@ -66,8 +67,9 @@ export function Header({ brand }: HeaderProps) {
           })}
         </nav>
 
-        {/* Actions: Theme Toggle, Admin Gateway */}
-        <div className="flex items-center gap-3">
+        {/* Actions: Currency Switcher, Theme Toggle, Admin Gateway */}
+        <div className="flex items-center gap-2.5">
+          <CurrencySelector />
           <ThemeToggle />
           <Link
             href="/admin"
