@@ -67,8 +67,16 @@ export function Header({ brand }: HeaderProps) {
           })}
         </nav>
 
-        {/* Actions: Currency Switcher, Theme Toggle, Admin Gateway */}
+        {/* Actions: Vault, Currency Switcher, Theme Toggle, Admin Gateway */}
         <div className="flex items-center gap-2.5">
+          <Link
+            href="/my-orders"
+            className="text-[11px] font-semibold text-foreground/70 hover:text-foreground border border-border/80 hover:border-foreground/30 px-3 py-1.5 rounded-full transition-all bg-card/50 hover:bg-card flex items-center gap-1"
+            title="Access Purchased Digital Vault"
+          >
+            <span>📦</span>
+            <span className="hidden sm:inline">My Vault</span>
+          </Link>
           <CurrencySelector />
           <ThemeToggle />
           <Link

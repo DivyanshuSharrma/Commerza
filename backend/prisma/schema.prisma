@@ -279,3 +279,16 @@ enum ReviewStatus {
   REJECTED
 }
 
+// Passwordless customer authentication tokens for "My Orders" customer portal
+model CustomerAuthToken {
+  id        String   @id @default(uuid())
+  email     String
+  code      String   // 6-digit verification OTP
+  token     String   @unique // Cryptographic hex token for 1-click magic link
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([token])
+}
+

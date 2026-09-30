@@ -26,6 +26,7 @@ import { CouponModule } from './modules/coupon/coupon.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { CategoryModule } from './modules/category/category.module';
 import { ReviewModule } from './modules/review/review.module';
+import { CustomerPortalModule } from './modules/customer-portal/customer-portal.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { ReviewModule } from './modules/review/review.module';
     AuditModule,
     CategoryModule,
     ReviewModule,
+    CustomerPortalModule,
   ],
   controllers: [AppController],
   providers: [

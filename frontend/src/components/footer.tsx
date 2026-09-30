@@ -107,6 +107,11 @@ export function Footer({ brand }: FooterProps) {
                 </a>
               </li>
               <li>
+                <Link href="/my-orders" className="hover:text-foreground transition-colors">
+                  Customer Orders Vault
+                </Link>
+              </li>
+              <li>
                 <Link href="/support" className="hover:text-foreground transition-colors">
                   Token Reissuance
                 </Link>
