@@ -8,6 +8,7 @@ import {
   Body,
   UseGuards,
   HttpStatus,
+  HttpCode,
 } from '@nestjs/common';
 import { CouponRepository } from '../../database/repositories/coupon.repository';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -26,6 +27,7 @@ export class CouponController {
   ) {}
 
   @Post('validate')
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Validate a coupon code publicly for checkout' })
   @ApiResponse({ status: 200, description: 'Coupon validity and discount info' })
   async validateCoupon(
