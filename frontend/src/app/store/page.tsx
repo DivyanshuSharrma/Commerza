@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { getBrandContext } from '@/features/brand/brand-context.resolver';
 import { WorksStoreSection } from '@/components/portfolio/works-store-section';
 
@@ -72,7 +73,20 @@ export default async function StorePage() {
       </div>
 
       {/* Main Works & Products Catalog */}
-      <WorksStoreSection products={activeProducts} brandName={brand.name} />
+      <Suspense
+        fallback={
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 animate-pulse space-y-6">
+            <div className="h-12 bg-card/60 rounded-2xl border border-border/70" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              <div className="h-72 bg-card/40 rounded-3xl border border-border/60" />
+              <div className="h-72 bg-card/40 rounded-3xl border border-border/60" />
+              <div className="h-72 bg-card/40 rounded-3xl border border-border/60" />
+            </div>
+          </div>
+        }
+      >
+        <WorksStoreSection products={activeProducts} brandName={brand.name} />
+      </Suspense>
     </div>
   );
 }

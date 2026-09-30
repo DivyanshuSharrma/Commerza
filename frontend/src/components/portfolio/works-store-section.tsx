@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { ProductInspectModal } from './product-inspect-modal';
 
 interface Product {
@@ -26,10 +27,19 @@ interface WorksStoreSectionProps {
 }
 
 export function WorksStoreSection({ products, brandName }: WorksStoreSectionProps) {
+  const searchParams = useSearchParams();
+  const categoryParam = searchParams?.get('category') || null;
+
   const [search, setSearch] = React.useState('');
-  const [selectedCategorySlug, setSelectedCategorySlug] = React.useState<string | null>(null);
+  const [selectedCategorySlug, setSelectedCategorySlug] = React.useState<string | null>(categoryParam);
   const [sortBy, setSortBy] = React.useState<'featured' | 'price-asc' | 'price-desc'>('featured');
   const [inspectedProduct, setInspectedProduct] = React.useState<Product | null>(null);
+
+  React.useEffect(() => {
+    if (categoryParam) {
+      setSelectedCategorySlug(categoryParam);
+    }
+  }, [categoryParam]);
 
   // Extract unique categories dynamically
   const categories = React.useMemo(() => {

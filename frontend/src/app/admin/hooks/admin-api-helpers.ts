@@ -56,3 +56,14 @@ export function sanitizeBrandPayload(brandForm: any) {
     },
   };
 }
+
+export function buildQueryString(params: Record<string, string | number | undefined>): string {
+  const q = new URLSearchParams();
+  for (const [key, val] of Object.entries(params)) {
+    if (val !== undefined && val !== null && val !== 'ALL' && String(val).trim() !== '') {
+      q.set(key, String(val));
+    }
+  }
+  const str = q.toString();
+  return str ? `?${str}` : '';
+}

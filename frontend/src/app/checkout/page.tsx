@@ -345,7 +345,7 @@ function CheckoutForm() {
             isLoading={submitting}
             disabled={submitting}
           >
-            Pay with Sandbox Payment
+            {submitting ? 'Initiating Checkout...' : `Complete Purchase • ${formatPrice(finalPrice)}`}
           </Button>
         </form>
       </div>

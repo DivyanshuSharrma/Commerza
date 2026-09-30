@@ -151,7 +151,7 @@ export default async function CategoriesPage() {
               <div className="pt-6 border-t border-border/50 flex items-center justify-between">
                 <span className="text-[11px] font-mono text-foreground/50">Verified MIT Architecture</span>
                 <Link
-                  href="/store"
+                  href={`/store?category=${cat.slug}`}
                   className="px-4 py-2 rounded-xl bg-foreground/5 hover:bg-foreground/10 text-foreground text-xs font-bold transition-all border border-border/60 hover:border-foreground/20"
                 >
                   Explore Domain &rarr;

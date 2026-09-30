@@ -54,7 +54,7 @@ export default async function AboutPage() {
       </div>
 
       {/* Creator Profile Box */}
-      <div className="bg-card border border-border/80 rounded-3xl p-8 sm:p-10 shadow-xs flex flex-col md:flex-row items-center justify-between gap-6">
+      <div id="persona" className="bg-card border border-border/80 rounded-3xl p-8 sm:p-10 shadow-xs flex flex-col md:flex-row items-center justify-between gap-6 scroll-mt-20">
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 rounded-2xl bg-foreground text-background flex items-center justify-center font-black text-xl shadow-sm">
             {brand.name.substring(0, 1).toUpperCase()}

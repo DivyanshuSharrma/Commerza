@@ -77,6 +77,7 @@ export default function AdminPage() {
     handleCouponUpdate,
     handleDeleteCoupon,
     handleCreateCategory,
+    handleUpdateCategory,
     handleDeleteCategory,
     handleBrandSave,
     handleSaveSettings,
@@ -325,6 +326,7 @@ export default function AdminPage() {
               categories={categories}
               brandId={selectedBrandId}
               onCreateCategory={handleCreateCategory}
+              onUpdateCategory={handleUpdateCategory}
               onDeleteCategory={async (id) => handleDeleteCategory(id)}
             />
           )}

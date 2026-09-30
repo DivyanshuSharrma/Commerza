@@ -8,10 +8,14 @@ import {
   Body,
   HttpStatus,
   HttpCode,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { ReviewService } from './review.service';
 import { CreateReviewDto, UpdateReviewStatusDto } from './dto/create-review.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { RequirePermissions } from '../auth/permissions.decorator';
 
 @ApiTags('Reviews')
 @Controller('reviews')
@@ -34,6 +38,9 @@ export class ReviewController {
   }
 
   @Get('brand/:brandId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @RequirePermissions('review:read')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get all reviews for brand moderation' })
   @ApiResponse({ status: 200, description: 'Brand reviews retrieved successfully' })
   async getBrandReviews(@Param('brandId') brandId: string) {
@@ -41,6 +48,9 @@ export class ReviewController {
   }
 
   @Patch(':id/status')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @RequirePermissions('review:update')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Update review moderation status' })
   @ApiResponse({ status: 200, description: 'Review status updated successfully' })
   async updateStatus(
@@ -51,6 +61,9 @@ export class ReviewController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @RequirePermissions('review:delete')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete a review' })
   @ApiResponse({ status: 200, description: 'Review deleted successfully' })
   async deleteReview(@Param('id') id: string) {

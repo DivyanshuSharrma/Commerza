@@ -19,6 +19,7 @@ interface CategoriesTabProps {
   categories: Category[];
   brandId: string;
   onCreateCategory: (data: { brandId: string; name: string; slug?: string; description?: string }) => Promise<void>;
+  onUpdateCategory: (id: string, data: { name?: string; slug?: string; description?: string }) => Promise<void>;
   onDeleteCategory: (id: string) => Promise<void>;
 }
 
@@ -26,13 +27,31 @@ export function CategoriesTab({
   categories,
   brandId,
   onCreateCategory,
+  onUpdateCategory,
   onDeleteCategory,
 }: CategoriesTabProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [description, setDescription] = useState('');
+
+  const handleOpenCreate = () => {
+    setEditingCategory(null);
+    setName('');
+    setSlug('');
+    setDescription('');
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEdit = (cat: Category) => {
+    setEditingCategory(cat);
+    setName(cat.name);
+    setSlug(cat.slug);
+    setDescription(cat.description || '');
+    setIsModalOpen(true);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,15 +59,24 @@ export function CategoriesTab({
 
     setSubmitting(true);
     try {
-      await onCreateCategory({
-        brandId,
-        name: name.trim(),
-        slug: slug.trim() || undefined,
-        description: description.trim() || undefined,
-      });
+      if (editingCategory) {
+        await onUpdateCategory(editingCategory.id, {
+          name: name.trim(),
+          slug: slug.trim() || undefined,
+          description: description.trim() || undefined,
+        });
+      } else {
+        await onCreateCategory({
+          brandId,
+          name: name.trim(),
+          slug: slug.trim() || undefined,
+          description: description.trim() || undefined,
+        });
+      }
       setName('');
       setSlug('');
       setDescription('');
+      setEditingCategory(null);
       setIsModalOpen(false);
     } finally {
       setSubmitting(false);
@@ -64,7 +92,7 @@ export function CategoriesTab({
             Organize digital products into browsable catalog categories.
           </p>
         </div>
-        <Button onClick={() => setIsModalOpen(true)}>
+        <Button onClick={handleOpenCreate}>
           + Add Category
         </Button>
       </div>
@@ -89,7 +117,14 @@ export function CategoriesTab({
                   <p className="text-sm text-foreground/75 line-clamp-2">{cat.description}</p>
                 )}
               </div>
-              <div className="pt-3 border-t border-border flex justify-end">
+              <div className="pt-3 border-t border-border flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => handleOpenEdit(cat)}
+                  className="text-primary hover:bg-primary/10 border-primary/30 text-xs py-1.5 px-3"
+                >
+                  Edit
+                </Button>
                 <Button
                   variant="outline"
                   onClick={() => onDeleteCategory(cat.id)}
@@ -103,8 +138,15 @@ export function CategoriesTab({
         </div>
       )}
 
-      {/* Add Category Modal */}
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Create New Category">
+      {/* Category Modal (Create & Edit) */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingCategory(null);
+        }}
+        title={editingCategory ? 'Edit Category' : 'Create New Category'}
+      >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-foreground/80 mb-1">Category Name *</label>
@@ -112,7 +154,7 @@ export function CategoriesTab({
               value={name}
               onChange={(e) => {
                 setName(e.target.value);
-                if (!slug) {
+                if (!editingCategory && !slug) {
                   setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''));
                 }
               }}
@@ -137,11 +179,18 @@ export function CategoriesTab({
             />
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t border-border">
-            <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setIsModalOpen(false);
+                setEditingCategory(null);
+              }}
+            >
               Cancel
             </Button>
             <Button type="submit" disabled={submitting || !name.trim()}>
-              {submitting ? 'Creating...' : 'Create Category'}
+              {submitting ? 'Saving...' : editingCategory ? 'Update Category' : 'Create Category'}
             </Button>
           </div>
         </form>

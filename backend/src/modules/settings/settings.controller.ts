@@ -3,10 +3,11 @@ import { ConfigService } from '../../config/config.service';
 import { SettingRepository } from '../../database/repositories/setting.repository';
 import { EncryptionService } from '../../common/services/encryption.service';
 import { SaveSettingDto } from './dto/save-setting.dto';
+import { BulkSaveSettingsDto } from './dto/bulk-save-settings.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { RequirePermissions } from '../auth/permissions.decorator';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 
 @ApiTags('settings')
 @Controller('settings')
@@ -43,6 +44,30 @@ export class SettingsController {
     return { message: 'Setting saved successfully' };
   }
 
+  @Post('bulk')
+  @RequirePermissions('setting:create', 'setting:update')
+  @ApiOperation({ summary: 'Save multiple settings in a single atomic request' })
+  async saveBulkSettings(@Body() dto: BulkSaveSettingsDto) {
+    let savedCount = 0;
+    for (const item of dto.settings) {
+      if (this.encryptionService.isSensitiveKey(item.key)) {
+        if (!item.value || item.value.includes('••') || item.value.trim() === '') {
+          continue; // Preserve existing secret
+        }
+      }
+
+      await this.configService.set(
+        item.key,
+        item.value,
+        item.level,
+        item.entityId || null,
+      );
+      savedCount++;
+    }
+
+    return { success: true, count: savedCount, message: `${savedCount} settings saved successfully` };
+  }
+
   @Get()
   @RequirePermissions('setting:read')
   @ApiOperation({ summary: 'Retrieve all settings (sensitive values masked)' })
@@ -56,22 +81,5 @@ export class SettingsController {
       isSensitive: this.encryptionService.isSensitiveKey(s.key),
       isConfigured: !!s.value && s.value.trim().length > 0,
     }));
-  }
-
-  @Get('resolve')
-  @RequirePermissions('setting:read')
-  @ApiOperation({ summary: 'Resolve setting key using hierarchy context' })
-  @ApiQuery({ name: 'key', example: 'download_limit' })
-  @ApiQuery({ name: 'brandId', required: false })
-  @ApiQuery({ name: 'productId', required: false })
-  @ApiQuery({ name: 'orderId', required: false })
-  async resolveSetting(
-    @Query('key') key: string,
-    @Query('brandId') brandId?: string,
-    @Query('productId') productId?: string,
-    @Query('orderId') orderId?: string,
-  ) {
-    const value = await this.configService.get(key, { brandId, productId, orderId });
-    return { key, value };
   }
 }

@@ -74,12 +74,6 @@ export class ProductController {
     return this.productQueryService.findBySlug(brandId, slug);
   }
 
-  @Get(':id/seo')
-  @ApiOperation({ summary: 'Retrieve product SEO metadata and JSON-LD schema' })
-  getSeoMetadata(@Param('id') id: string) {
-    return this.productSeoService.generateMetadata(id);
-  }
-
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @RequirePermissions('product:update')

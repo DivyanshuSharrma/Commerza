@@ -121,11 +121,17 @@ export function Footer({ brand }: FooterProps) {
             &copy; {new Date().getFullYear()} {brandName} Atelier. Engineered for High-Concurrency Production.
           </div>
           <div className="flex gap-4">
-            <span className="hover:text-foreground cursor-pointer transition-colors">Privacy Framework</span>
+            <Link href="/privacy" className="hover:text-foreground cursor-pointer transition-colors">
+              Privacy Framework
+            </Link>
             <span>&bull;</span>
-            <span className="hover:text-foreground cursor-pointer transition-colors">Terms of Sale</span>
+            <Link href="/terms" className="hover:text-foreground cursor-pointer transition-colors">
+              Terms of Sale
+            </Link>
             <span>&bull;</span>
-            <span className="hover:text-foreground cursor-pointer transition-colors">Single-License MIT</span>
+            <Link href="/license" className="hover:text-foreground cursor-pointer transition-colors">
+              Single-License MIT
+            </Link>
           </div>
         </div>
       </div>

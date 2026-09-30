@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import { OrderDetailsDrawer } from './order-details-drawer';
 
 interface Order {
   id: string;
@@ -49,8 +50,6 @@ interface OrdersTabProps {
 export function OrdersTab({ orders, onFetchDetails, onResendEmail, onRegenerateLink, onFetchPaginated }: OrdersTabProps) {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(false);
-  const [actionLoading, setActionLoading] = useState(false);
-  const [copiedField, setCopiedField] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PAID' | 'PENDING' | 'FAILED' | 'REFUNDED'>('ALL');
   const [currentPage, setCurrentPage] = useState(1);
@@ -130,33 +129,6 @@ export function OrdersTab({ orders, onFetchDetails, onResendEmail, onRegenerateL
       console.error(err);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleCopy = (text: string, field: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedField(field);
-    setTimeout(() => setCopiedField(null), 2000);
-  };
-
-  const handleResend = async () => {
-    if (!selectedOrder) return;
-    setActionLoading(true);
-    try {
-      await onResendEmail(selectedOrder.id);
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleRegeneratedLink = async () => {
-    if (!selectedOrder) return;
-    setActionLoading(true);
-    try {
-      const updated = await onRegenerateLink(selectedOrder.id);
-      setSelectedOrder(updated);
-    } finally {
-      setActionLoading(false);
     }
   };
 
@@ -336,202 +308,12 @@ export function OrdersTab({ orders, onFetchDetails, onResendEmail, onRegenerateL
           )}
 
           {!loading && selectedOrder && (
-            <div className="space-y-6 text-sm">
-              {/* Customer Details */}
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <h4 className="font-bold text-foreground text-xs uppercase tracking-wider text-primary">
-                    Customer Credentials
-                  </h4>
-                  <button
-                    onClick={() => handleCopy(selectedOrder.id, 'orderId')}
-                    className="text-[10px] bg-foreground/5 hover:bg-foreground/10 px-2 py-0.5 rounded text-foreground transition-all cursor-pointer"
-                  >
-                    {copiedField === 'orderId' ? '✓ Copied ID' : '📋 Copy Order ID'}
-                  </button>
-                </div>
-                <div className="bg-foreground/5 p-3 rounded-lg space-y-1">
-                  <div className="font-semibold text-foreground">{selectedOrder.customer.name || 'Anonymous'}</div>
-                  <div className="text-xs text-foreground/70">{selectedOrder.customer.email}</div>
-                  <div className="text-xs pt-1">
-                    Status:{' '}
-                    <span
-                      className={`font-semibold ${
-                        selectedOrder.customer.status === 'ACTIVE' ? 'text-green-500' : 'text-red-500'
-                      }`}
-                    >
-                      {selectedOrder.customer.status}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Payment Details */}
-              <div>
-                <h4 className="font-bold text-foreground text-xs uppercase tracking-wider mb-2 text-primary">
-                  Billing Coordinates
-                </h4>
-                <ul className="space-y-1.5 text-xs text-foreground/80">
-                  <li className="flex justify-between">
-                    <span>Gateway:</span>
-                    <span className="font-semibold text-foreground">
-                      {selectedOrder.paymentProvider || 'None'}
-                    </span>
-                  </li>
-                  <li className="flex justify-between items-center">
-                    <span>Transaction ID:</span>
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-mono font-semibold text-foreground truncate max-w-[100px]">
-                        {selectedOrder.paymentId || 'Pending'}
-                      </span>
-                      {selectedOrder.paymentId && (
-                        <button
-                          onClick={() => handleCopy(selectedOrder.paymentId!, 'paymentId')}
-                          className="text-[9px] bg-foreground/5 hover:bg-foreground/10 px-1 py-0.5 rounded text-foreground cursor-pointer"
-                        >
-                          {copiedField === 'paymentId' ? '✓' : 'Copy'}
-                        </button>
-                      )}
-                    </div>
-                  </li>
-                  <li className="flex justify-between">
-                    <span>Total Charged:</span>
-                    <span className="font-bold text-foreground">
-                      ${parseFloat(selectedOrder.amountPaid).toFixed(2)}
-                    </span>
-                  </li>
-                </ul>
-              </div>
-
-              {/* Delivery / Token settings */}
-              <div>
-                <h4 className="font-bold text-foreground text-xs uppercase tracking-wider mb-2 text-primary">
-                  Delivery Token Config
-                </h4>
-                <ul className="space-y-1.5 text-xs text-foreground/80">
-                  <li className="flex justify-between">
-                    <span>Token:</span>
-                    <span className="font-mono font-semibold text-foreground truncate max-w-[150px]">
-                      {selectedOrder.downloadToken}
-                    </span>
-                  </li>
-                  <li className="flex justify-between">
-                    <span>Download Clicks:</span>
-                    <span className="font-bold text-foreground">
-                      {selectedOrder.downloadCount} / {selectedOrder.downloadLimit}
-                    </span>
-                  </li>
-                  <li className="flex justify-between">
-                    <span>Expiry Target:</span>
-                    <span className="font-semibold text-foreground">
-                      {new Date(selectedOrder.expiresAt).toLocaleDateString()}
-                    </span>
-                  </li>
-                </ul>
-              </div>
-
-              {/* Recovery Actions */}
-              <div className="border-t border-border pt-4 mt-2 space-y-2">
-                <h4 className="font-bold text-foreground text-xs uppercase tracking-wider mb-2 text-primary">
-                  Order Recovery Options
-                </h4>
-                <div className="flex flex-col gap-2">
-                  <button
-                    onClick={handleResend}
-                    disabled={actionLoading || selectedOrder.status !== 'PAID'}
-                    className="w-full bg-primary/10 hover:bg-primary/20 disabled:opacity-50 text-primary font-bold py-2 rounded-lg transition-colors cursor-pointer text-xs flex items-center justify-center gap-1"
-                  >
-                    📩 {actionLoading ? 'Processing...' : 'Resend Receipt Email'}
-                  </button>
-                  <button
-                    onClick={handleRegeneratedLink}
-                    disabled={actionLoading}
-                    className="w-full bg-yellow-600/10 hover:bg-yellow-600/20 disabled:opacity-50 text-yellow-600 font-bold py-2 rounded-lg transition-colors cursor-pointer text-xs flex items-center justify-center gap-1"
-                  >
-                    🔗 {actionLoading ? 'Processing...' : 'Regenerate Download Link'}
-                  </button>
-                  {selectedOrder.status === 'PAID' ? (
-                    <a
-                      href={`${(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api') + '/v1'}/orders/${selectedOrder.id}/invoice`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full bg-foreground/5 hover:bg-foreground/10 text-foreground font-bold py-2 rounded-lg transition-colors cursor-pointer text-xs flex items-center justify-center gap-1 border border-border"
-                    >
-                      📄 Download Tax Invoice (PDF)
-                    </a>
-                  ) : (
-                    <div className="w-full bg-foreground/5 text-foreground/40 font-medium py-2 rounded-lg text-xs flex items-center justify-center gap-1 border border-dashed border-border select-none">
-                      🔒 Invoice available once settled (PAID)
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Download History logs */}
-              <div>
-                <h4 className="font-bold text-foreground text-xs uppercase tracking-wider mb-2 text-primary">
-                  Download History Logs
-                </h4>
-                <div className="max-h-40 overflow-y-auto space-y-2 pr-1">
-                  {selectedOrder.downloadLogs && selectedOrder.downloadLogs.length > 0 ? (
-                    selectedOrder.downloadLogs.map((log) => (
-                      <div
-                        key={log.id}
-                        className="bg-foreground/5 p-2 rounded text-xs space-y-1"
-                      >
-                        <div className="flex justify-between">
-                          <span
-                            className={`font-bold ${
-                              log.success ? 'text-green-500' : 'text-red-500'
-                            }`}
-                          >
-                            {log.success ? 'SUCCESS' : 'FAILED'}
-                          </span>
-                          <span className="text-[10px] text-foreground/45">
-                            {new Date(log.createdAt).toLocaleTimeString()}
-                          </span>
-                        </div>
-                        {log.ipAddress && (
-                          <div className="text-[10px] text-foreground/60 font-mono">
-                            IP: {log.ipAddress}
-                          </div>
-                        )}
-                        {log.errorMessage && (
-                          <div className="text-[10px] text-red-400">Error: {log.errorMessage}</div>
-                        )}
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-4 text-xs text-foreground/40">
-                      No download clicks logged yet.
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Audit Timeline */}
-              <div>
-                <h4 className="font-bold text-foreground text-xs uppercase tracking-wider mb-2 text-primary">
-                  Audit Timeline
-                </h4>
-                <div className="space-y-3 relative pl-4 border-l border-border text-xs">
-                  <div className="relative">
-                    <span className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-green-500"></span>
-                    <span className="font-semibold text-foreground">Checkout Initiated</span>
-                    <p className="text-[10px] text-foreground/50">
-                      {new Date(selectedOrder.createdAt).toLocaleString()}
-                    </p>
-                  </div>
-                  {selectedOrder.status === 'PAID' && (
-                    <div className="relative">
-                      <span className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-green-500"></span>
-                      <span className="font-semibold text-foreground">Payment Finalized</span>
-                      <p className="text-[10px] text-foreground/50">Dispatched download link</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+            <OrderDetailsDrawer
+              key={selectedOrder.id}
+              order={selectedOrder}
+              onResendEmail={onResendEmail}
+              onRegenerateLink={onRegenerateLink}
+            />
           )}
         </div>
       </div>

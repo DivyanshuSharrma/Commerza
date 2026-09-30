@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { parseError, sanitizeBrandPayload, DEFAULT_BRAND_ID } from './admin-api-helpers';
+import { parseError, sanitizeBrandPayload, buildQueryString, DEFAULT_BRAND_ID } from './admin-api-helpers';
 
 export function useAdminData(token: string | null, onUnauthorized?: () => void) {
   const [loadingData, setLoadingData] = useState(false);
@@ -323,6 +323,22 @@ export function useAdminData(token: string | null, onUnauthorized?: () => void) 
     }
   };
 
+  const handleUpdateCategory = async (id: string, catData: any) => {
+    try {
+      const payload = {
+        ...catData,
+        brandId: catData.brandId || selectedBrandId || DEFAULT_BRAND_ID,
+      };
+      const res = await authFetch(`/categories/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+      if (!res.ok) throw new Error(await parseError(res, 'Failed to update category'));
+      triggerToast('Category updated successfully!', 'success');
+      loadData();
+    } catch (err: any) {
+      triggerToast(err.message, 'error');
+      throw err;
+    }
+  };
+
   const handleDeleteCategory = (categoryId: string) => {
     setConfirmModal({
       message: 'Delete this category?',
@@ -359,24 +375,21 @@ export function useAdminData(token: string | null, onUnauthorized?: () => void) 
     }
   };
 
-  // Provider Settings
+  // Provider Settings - Single Bulk API Call (Eliminates N+1 request spam)
   const handleSaveSettings = async (formData: any) => {
     try {
-      await Promise.all(
-        Object.entries(formData).map(async ([key, val]) => {
-          const res = await authFetch('/settings', {
-            method: 'POST',
-            body: JSON.stringify({
-              key,
-              value: String(val),
-              level: selectedBrandId ? 'BRAND' : key.includes('provider') ? 'GLOBAL' : 'SYSTEM',
-              entityId: selectedBrandId || null,
-            }),
-          });
-          if (!res.ok) throw new Error(await parseError(res, `Failed to save setting: ${key}`));
-          return res;
-        })
-      );
+      const settingsPayload = Object.entries(formData).map(([key, val]) => ({
+        key,
+        value: String(val),
+        level: selectedBrandId ? 'BRAND' : key.includes('provider') ? 'GLOBAL' : 'SYSTEM',
+        entityId: selectedBrandId || null,
+      }));
+
+      const res = await authFetch('/settings/bulk', {
+        method: 'POST',
+        body: JSON.stringify({ settings: settingsPayload }),
+      });
+      if (!res.ok) throw new Error(await parseError(res, 'Failed to save settings'));
       triggerToast('Provider configuration saved successfully!', 'success');
       loadData();
     } catch (err: any) {
@@ -440,44 +453,29 @@ export function useAdminData(token: string | null, onUnauthorized?: () => void) 
     handleCouponUpdate,
     handleDeleteCoupon,
     handleCreateCategory,
+    handleUpdateCategory,
     handleDeleteCategory,
     handleBrandSave,
     handleSaveSettings,
     handleToggleFlag,
     handleProfileUpdate,
     fetchPaginatedOrders: async (params: { page?: number; limit?: number; search?: string; status?: string }) => {
-      const q = new URLSearchParams();
-      if (params.page) q.set('page', String(params.page));
-      if (params.limit) q.set('limit', String(params.limit));
-      if (params.search) q.set('search', params.search);
-      if (params.status && params.status !== 'ALL') q.set('status', params.status);
-
-      const res = await authFetch(`/orders?${q.toString()}`);
+      const q = buildQueryString(params);
+      const res = await authFetch(`/orders${q}`);
       if (!res.ok) throw new Error(await parseError(res, 'Failed to fetch orders'));
       const body = await res.json();
       return body.data || body;
     },
     fetchPaginatedCustomers: async (params: { page?: number; limit?: number; search?: string; status?: string }) => {
-      const q = new URLSearchParams();
-      if (params.page) q.set('page', String(params.page));
-      if (params.limit) q.set('limit', String(params.limit));
-      if (params.search) q.set('search', params.search);
-      if (params.status && params.status !== 'ALL') q.set('status', params.status);
-
-      const res = await authFetch(`/customers?${q.toString()}`);
+      const q = buildQueryString(params);
+      const res = await authFetch(`/customers${q}`);
       if (!res.ok) throw new Error(await parseError(res, 'Failed to fetch customers'));
       const body = await res.json();
       return body.data || body;
     },
     fetchPaginatedProducts: async (params: { page?: number; limit?: number; search?: string; categoryId?: string; status?: string }) => {
-      const q = new URLSearchParams();
-      if (params.page) q.set('page', String(params.page));
-      if (params.limit) q.set('limit', String(params.limit));
-      if (params.search) q.set('search', params.search);
-      if (params.categoryId && params.categoryId !== 'ALL') q.set('categoryId', params.categoryId);
-      if (params.status && params.status !== 'ALL') q.set('status', params.status);
-
-      const res = await authFetch(`/products?${q.toString()}`);
+      const q = buildQueryString(params);
+      const res = await authFetch(`/products${q}`);
       if (!res.ok) throw new Error(await parseError(res, 'Failed to fetch products'));
       const body = await res.json();
       return body.data || body;
