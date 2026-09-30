@@ -10,10 +10,10 @@ export interface Response<T> {
 @Injectable()
 export class TransformInterceptor<T> implements NestInterceptor<T, Response<T>> {
   intercept(context: ExecutionContext, next: CallHandler): Observable<Response<T>> {
-    // If it's a download request or redirect (like download gateway), don't wrap the response
+    // If it's a download request or invoice PDF, don't wrap the response in JSON
     const http = context.switchToHttp();
     const req = http.getRequest();
-    if (req.url.includes('/download/d/')) {
+    if (req.url.includes('/download/d/') || req.url.includes('/invoice')) {
       return next.handle();
     }
 

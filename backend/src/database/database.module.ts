@@ -12,10 +12,12 @@ import { AuditLogRepository } from './repositories/audit-log.repository';
 import { CategoryRepository } from './repositories/category.repository';
 import { ReviewRepository } from './repositories/review.repository';
 import { TransactionService } from './transaction.service';
+import { EncryptionService } from '../common/services/encryption.service';
 
 @Module({
   providers: [
     PrismaService,
+    EncryptionService,
     BrandRepository,
     ProductRepository,
     OrderRepository,
@@ -31,6 +33,7 @@ import { TransactionService } from './transaction.service';
   ],
   exports: [
     PrismaService,
+    EncryptionService,
     BrandRepository,
     ProductRepository,
     OrderRepository,

@@ -1,6 +1,8 @@
-import { Controller, Post, Get, Param, Query, Body, UseGuards, ForbiddenException, Logger } from '@nestjs/common';
+import { Controller, Post, Get, Param, Query, Body, UseGuards, ForbiddenException, Logger, Res } from '@nestjs/common';
+import type * as express from 'express';
 import { OrderQueryService } from './order-query.service';
 import { OrderCommandService } from './order-command.service';
+import { InvoicePdfService } from './invoice-pdf.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { RecoverOrderDto } from './dto/recover-order.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -17,6 +19,7 @@ export class OrderController {
   constructor(
     private readonly orderQueryService: OrderQueryService,
     private readonly orderCommandService: OrderCommandService,
+    private readonly invoicePdfService: InvoicePdfService,
     private readonly configService: ConfigService,
   ) {}
 
@@ -47,10 +50,48 @@ export class OrderController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @RequirePermissions('order:read')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Retrieve all orders' })
+  @ApiOperation({ summary: 'Retrieve orders with pagination and filtering' })
   @ApiQuery({ name: 'brandId', required: false })
-  findAll(@Query('brandId') brandId?: string) {
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiQuery({ name: 'status', required: false, type: String })
+  findAll(
+    @Query('brandId') brandId?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
+    @Query('status') status?: string,
+  ) {
+    if (page !== undefined || limit !== undefined || search !== undefined || status !== undefined) {
+      return this.orderQueryService.findPaginated({
+        brandId,
+        page: page ? parseInt(page, 10) : 1,
+        limit: limit ? parseInt(limit, 10) : 10,
+        search,
+        status,
+      });
+    }
     return this.orderQueryService.findAll(brandId);
+  }
+
+  @Get(':id/invoice')
+  @ApiOperation({ summary: 'Generate and stream automated vector PDF invoice for an order' })
+  async getInvoice(
+    @Param('id') id: string,
+    @Res() res: express.Response,
+  ) {
+    this.logger.log(`Invoice request received for Order ID: ${id}`);
+    const order = await this.orderQueryService.findOne(id);
+    const pdfBuffer = await this.invoicePdfService.generateInvoiceBuffer(order);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `inline; filename="Invoice-${id.slice(0, 8).toUpperCase()}.pdf"`,
+    );
+    res.setHeader('Content-Length', pdfBuffer.length);
+    res.end(pdfBuffer);
   }
 
   @Get('status/:id')

@@ -7,10 +7,12 @@ import { AuthModule } from '../auth/auth.module';
 import { PaymentModule } from '../payment/payment.module';
 import { NotificationModule } from '../notification/notification.module';
 
+import { InvoicePdfService } from './invoice-pdf.service';
+
 @Module({
   imports: [DatabaseModule, AuthModule, PaymentModule, NotificationModule],
   controllers: [OrderController],
-  providers: [OrderQueryService, OrderCommandService],
-  exports: [OrderQueryService, OrderCommandService],
+  providers: [OrderQueryService, OrderCommandService, InvoicePdfService],
+  exports: [OrderQueryService, OrderCommandService, InvoicePdfService],
 })
 export class OrderModule {}

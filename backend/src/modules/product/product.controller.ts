@@ -28,9 +28,37 @@ export class ProductController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Retrieve all products' })
+  @ApiOperation({ summary: 'Retrieve products with optional pagination and filtering' })
   @ApiQuery({ name: 'brandId', required: false })
-  findAll(@Query('brandId') brandId?: string) {
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiQuery({ name: 'categoryId', required: false, type: String })
+  @ApiQuery({ name: 'status', required: false, type: String })
+  findAll(
+    @Query('brandId') brandId?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
+    @Query('categoryId') categoryId?: string,
+    @Query('status') status?: string,
+  ) {
+    if (
+      page !== undefined ||
+      limit !== undefined ||
+      search !== undefined ||
+      categoryId !== undefined ||
+      status !== undefined
+    ) {
+      return this.productQueryService.findPaginated({
+        brandId,
+        page: page ? parseInt(page, 10) : 1,
+        limit: limit ? parseInt(limit, 10) : 10,
+        search,
+        categoryId,
+        status,
+      });
+    }
     return this.productQueryService.findAll(brandId);
   }
 

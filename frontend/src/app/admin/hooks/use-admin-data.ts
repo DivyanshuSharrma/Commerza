@@ -129,10 +129,19 @@ export function useAdminData(token: string | null, onUnauthorized?: () => void) 
         }
       }
 
-      if (prodRes.ok) setProducts((await prodRes.json()).data || []);
+      if (prodRes.ok) {
+        const prodData = (await prodRes.json()).data;
+        setProducts(Array.isArray(prodData) ? prodData : prodData?.items || []);
+      }
       if (catRes.ok) setCategories((await catRes.json()).data || []);
-      if (orderRes.ok) setOrders((await orderRes.json()).data || []);
-      if (custRes.ok) setCustomers((await custRes.json()).data || []);
+      if (orderRes.ok) {
+        const ordData = (await orderRes.json()).data;
+        setOrders(Array.isArray(ordData) ? ordData : ordData?.items || []);
+      }
+      if (custRes.ok) {
+        const custData = (await custRes.json()).data;
+        setCustomers(Array.isArray(custData) ? custData : custData?.items || []);
+      }
       if (couponRes.ok) setCoupons((await couponRes.json()).data || []);
       if (settingsRes.ok) setSettings((await settingsRes.json()).data || []);
       if (flagsRes.ok) setFlags((await flagsRes.json()).data || {});

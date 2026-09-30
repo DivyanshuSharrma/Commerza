@@ -21,4 +21,14 @@ export class OrderQueryService {
   async findAll(brandId?: string) {
     return this.orderRepo.findMany(brandId);
   }
+
+  async findPaginated(options: {
+    brandId?: string;
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: string;
+  }) {
+    return this.orderRepo.findPaginated(options);
+  }
 }

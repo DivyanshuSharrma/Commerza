@@ -163,16 +163,36 @@ export default function SuccessPage() {
             )}
           </div>
           {token ? (
-            <Button
-              className="w-full py-3.5 font-bold shadow-md cursor-pointer text-base"
-              onClick={() => router.push(`/download/${token}`)}
-            >
-              Download Now
-            </Button>
+            <div className="space-y-3">
+              <Button
+                className="w-full py-3.5 font-bold shadow-md cursor-pointer text-base"
+                onClick={() => router.push(`/download/${token}`)}
+              >
+                Download Now
+              </Button>
+              <a
+                href={`${apiUrl}/orders/${order.id}/invoice`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl text-xs font-semibold bg-foreground/5 hover:bg-foreground/10 text-foreground border border-border/70 transition-all cursor-pointer text-center"
+              >
+                <span>📄</span> Download Tax Invoice (PDF)
+              </a>
+            </div>
           ) : (
-            <p className="text-xs text-red-500 text-center font-semibold animate-bounce">
-              No download link was associated with this order. Please contact support.
-            </p>
+            <div className="space-y-3">
+              <p className="text-xs text-red-500 text-center font-semibold animate-bounce">
+                No download link was associated with this order. Please contact support.
+              </p>
+              <a
+                href={`${apiUrl}/orders/${order.id}/invoice`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl text-xs font-semibold bg-foreground/5 hover:bg-foreground/10 text-foreground border border-border/70 transition-all cursor-pointer text-center"
+              >
+                <span>📄</span> Download Tax Invoice (PDF)
+              </a>
+            </div>
           )}
         </div>
       ) : (

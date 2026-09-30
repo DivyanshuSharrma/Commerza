@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 
 interface Order {
   id: string;
@@ -46,6 +46,27 @@ export function OrdersTab({ orders, onFetchDetails, onResendEmail, onRegenerateL
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'PAID' | 'PENDING' | 'FAILED' | 'REFUNDED'>('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 7;
+
+  const filteredOrders = useMemo(() => {
+    return orders.filter((o) => {
+      const q = search.toLowerCase();
+      const matchesSearch =
+        o.id.toLowerCase().includes(q) ||
+        (o.customer?.email || '').toLowerCase().includes(q) ||
+        (o.customer?.name || '').toLowerCase().includes(q) ||
+        (o.product?.title || '').toLowerCase().includes(q);
+
+      const matchesStatus = statusFilter === 'ALL' || o.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [orders, search, statusFilter]);
+
+  const totalPages = Math.ceil(filteredOrders.length / pageSize) || 1;
+  const paginatedOrders = filteredOrders.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const handleRowClick = async (orderId: string) => {
     try {
@@ -87,65 +108,153 @@ export function OrdersTab({ orders, onFetchDetails, onResendEmail, onRegenerateL
   };
 
   return (
-    <div className="space-y-8">
-      <h2 className="text-3xl font-extrabold text-foreground">Order Operations Directory</h2>
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-3xl font-extrabold text-foreground">Order Operations Directory</h2>
+          <p className="text-xs text-foreground/60 mt-1">
+            Real-time transaction logs, cryptographic delivery tokens, and tax invoice generation.
+          </p>
+        </div>
+      </div>
+
+      {/* Filter and Search Bar */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        <div className="relative flex-1">
+          <input
+            type="text"
+            placeholder="Search by Order ID, customer email or product..."
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="w-full bg-card border border-border px-3.5 py-2 pl-9 rounded-xl text-xs text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+          <span className="absolute left-3 top-2.5 text-xs text-foreground/40">🔍</span>
+          {search && (
+            <button
+              onClick={() => {
+                setSearch('');
+                setCurrentPage(1);
+              }}
+              className="absolute right-3 top-2 text-xs text-foreground/40 hover:text-foreground cursor-pointer"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+        {/* Status Pills */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+          {(['ALL', 'PAID', 'PENDING', 'FAILED', 'REFUNDED'] as const).map((st) => (
+            <button
+              key={st}
+              onClick={() => {
+                setStatusFilter(st);
+                setCurrentPage(1);
+              }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
+                statusFilter === st
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'bg-card border border-border text-foreground/70 hover:bg-foreground/5'
+              }`}
+            >
+              {st}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Orders List Table */}
-        <div className="lg:col-span-2 bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
-          <div className="px-6 py-4 border-b border-border">
-            <h3 className="font-bold text-foreground">Checkout Logs</h3>
+        <div className="lg:col-span-2 bg-card border border-border rounded-2xl overflow-hidden shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="px-6 py-3.5 border-b border-border flex items-center justify-between">
+              <h3 className="font-bold text-foreground text-sm">Checkout Logs</h3>
+              <span className="text-xs text-foreground/50">
+                {filteredOrders.length} {filteredOrders.length === 1 ? 'order' : 'orders'} found
+              </span>
+            </div>
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-foreground/5 text-xs font-semibold text-foreground/75 border-b border-border">
+                  <th className="px-5 py-3">Order ID / Customer</th>
+                  <th className="px-5 py-3">Product</th>
+                  <th className="px-5 py-3">Amount</th>
+                  <th className="px-5 py-3">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border text-sm text-foreground/75">
+                {paginatedOrders.map((o) => (
+                  <tr
+                    key={o.id}
+                    onClick={() => handleRowClick(o.id)}
+                    className={`hover:bg-foreground/5 cursor-pointer transition-colors ${
+                      selectedOrder?.id === o.id ? 'bg-primary/5' : ''
+                    }`}
+                  >
+                    <td className="px-5 py-3.5">
+                      <div className="font-semibold text-foreground truncate max-w-[180px]">
+                        {o.id.substring(0, 8)}...
+                      </div>
+                      <div className="text-xs text-foreground/50">{o.customer?.email}</div>
+                    </td>
+                    <td className="px-5 py-3.5 font-medium text-foreground text-xs">{o.product?.title}</td>
+                    <td className="px-5 py-3.5 font-bold text-foreground text-xs">
+                      ${parseFloat(o.amountPaid).toFixed(2)}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span
+                        className={`inline-block px-2 py-0.5 rounded text-[11px] font-semibold ${
+                          o.status === 'PAID'
+                            ? 'bg-green-500/10 text-green-500'
+                            : o.status === 'PENDING'
+                            ? 'bg-yellow-500/10 text-yellow-500'
+                            : 'bg-red-500/10 text-red-500'
+                        }`}
+                      >
+                        {o.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {paginatedOrders.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="text-center py-8 text-foreground/50 text-xs">
+                      No matching checkout orders found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-foreground/5 text-xs font-semibold text-foreground/75 border-b border-border">
-                <th className="px-6 py-3">Order ID / Customer</th>
-                <th className="px-6 py-3">Product</th>
-                <th className="px-6 py-3">Amount</th>
-                <th className="px-6 py-3">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border text-sm text-foreground/75">
-              {orders.map((o) => (
-                <tr
-                  key={o.id}
-                  onClick={() => handleRowClick(o.id)}
-                  className={`hover:bg-foreground/5 cursor-pointer transition-colors ${
-                    selectedOrder?.id === o.id ? 'bg-primary/5' : ''
-                  }`}
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="px-6 py-3 border-t border-border flex items-center justify-between text-xs text-foreground/70 bg-card">
+              <span>
+                Page <strong className="text-foreground">{currentPage}</strong> of{' '}
+                <strong className="text-foreground">{totalPages}</strong>
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  disabled={currentPage <= 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  className="px-2.5 py-1 rounded border border-border disabled:opacity-30 hover:bg-foreground/5 cursor-pointer font-medium"
                 >
-                  <td className="px-6 py-4">
-                    <div className="font-semibold text-foreground truncate max-w-[200px]">
-                      {o.id.substring(0, 8)}...
-                    </div>
-                    <div className="text-xs text-foreground/50">{o.customer?.email}</div>
-                  </td>
-                  <td className="px-6 py-4 font-medium text-foreground">{o.product?.title}</td>
-                  <td className="px-6 py-4 font-bold text-foreground">${parseFloat(o.amountPaid).toFixed(2)}</td>
-                  <td className="px-6 py-4">
-                    <span
-                      className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${
-                        o.status === 'PAID'
-                          ? 'bg-green-500/10 text-green-500'
-                          : o.status === 'PENDING'
-                          ? 'bg-yellow-500/10 text-yellow-500'
-                          : 'bg-red-500/10 text-red-500'
-                      }`}
-                    >
-                      {o.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-              {orders.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="text-center py-6 text-foreground/50">
-                    No checkouts recorded yet.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                  ← Prev
+                </button>
+                <button
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  className="px-2.5 py-1 rounded border border-border disabled:opacity-30 hover:bg-foreground/5 cursor-pointer font-medium"
+                >
+                  Next →
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Detailed Inspector Panel */}
@@ -281,6 +390,14 @@ export function OrdersTab({ orders, onFetchDetails, onResendEmail, onRegenerateL
                   >
                     🔗 {actionLoading ? 'Processing...' : 'Regenerate Download Link'}
                   </button>
+                  <a
+                    href={`${(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api') + '/v1'}/orders/${selectedOrder.id}/invoice`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full bg-foreground/5 hover:bg-foreground/10 text-foreground font-bold py-2 rounded-lg transition-colors cursor-pointer text-xs flex items-center justify-center gap-1 border border-border"
+                  >
+                    📄 Download Tax Invoice (PDF)
+                  </a>
                 </div>
               </div>
 

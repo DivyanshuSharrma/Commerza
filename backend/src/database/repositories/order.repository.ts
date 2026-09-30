@@ -13,6 +13,54 @@ export class OrderRepository {
     });
   }
 
+  async findPaginated(options: {
+    brandId?: string;
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: string;
+  }) {
+    const page = Math.max(1, Number(options.page) || 1);
+    const limit = Math.max(1, Math.min(100, Number(options.limit) || 10));
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+    if (options.brandId) {
+      where.brandId = options.brandId;
+    }
+    if (options.status && options.status !== 'ALL') {
+      where.status = options.status;
+    }
+    if (options.search && options.search.trim()) {
+      const q = options.search.trim();
+      where.OR = [
+        { id: { contains: q } },
+        { customer: { email: { contains: q } } },
+        { customer: { name: { contains: q } } },
+        { product: { title: { contains: q } } },
+      ];
+    }
+
+    const [total, items] = await Promise.all([
+      this.prisma.order.count({ where }),
+      this.prisma.order.findMany({
+        where,
+        skip,
+        take: limit,
+        include: { product: true, customer: true, brand: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit) || 1,
+    };
+  }
+
   async findManyByCustomerEmail(email: string, brandId?: string) {
     return this.prisma.order.findMany({
       where: {

@@ -10,6 +10,17 @@ export class ProductQueryService {
     return this.productRepo.findMany(brandId);
   }
 
+  async findPaginated(options: {
+    brandId?: string;
+    categoryId?: string;
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: string;
+  }) {
+    return this.productRepo.findPaginated(options);
+  }
+
   async findOne(id: string) {
     const product = await this.productRepo.findById(id);
     if (!product) throw new BusinessException('Product not found', HttpStatus.NOT_FOUND);
