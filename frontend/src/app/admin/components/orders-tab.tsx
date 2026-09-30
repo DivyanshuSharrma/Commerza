@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 
 interface Order {
   id: string;
@@ -39,9 +39,14 @@ interface OrdersTabProps {
   onFetchDetails: (id: string) => Promise<Order>;
   onResendEmail: (id: string) => Promise<void>;
   onRegenerateLink: (id: string) => Promise<Order>;
+  onFetchPaginated?: (params: { page?: number; limit?: number; search?: string; status?: string }) => Promise<{
+    items: Order[];
+    total: number;
+    totalPages: number;
+  }>;
 }
 
-export function OrdersTab({ orders, onFetchDetails, onResendEmail, onRegenerateLink }: OrdersTabProps) {
+export function OrdersTab({ orders, onFetchDetails, onResendEmail, onRegenerateLink, onFetchPaginated }: OrdersTabProps) {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
@@ -51,6 +56,45 @@ export function OrdersTab({ orders, onFetchDetails, onResendEmail, onRegenerateL
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 7;
 
+  // Server-side pagination state
+  const [serverOrders, setServerOrders] = useState<Order[] | null>(null);
+  const [totalCount, setTotalCount] = useState<number | null>(null);
+  const [totalPagesCount, setTotalPagesCount] = useState<number | null>(null);
+  const [isFetching, setIsFetching] = useState(false);
+
+  // Debounced server-side query execution
+  useEffect(() => {
+    if (!onFetchPaginated) return;
+
+    let isCancelled = false;
+    const timer = setTimeout(async () => {
+      setIsFetching(true);
+      try {
+        const res = await onFetchPaginated({
+          page: currentPage,
+          limit: pageSize,
+          search: search.trim() || undefined,
+          status: statusFilter,
+        });
+        if (!isCancelled && res) {
+          setServerOrders(res.items || []);
+          setTotalCount(res.total ?? 0);
+          setTotalPagesCount(res.totalPages ?? 1);
+        }
+      } catch (err) {
+        console.error('Failed to fetch paginated orders from server:', err);
+      } finally {
+        if (!isCancelled) setIsFetching(false);
+      }
+    }, 250);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+    };
+  }, [currentPage, search, statusFilter, onFetchPaginated]);
+
+  // Client-side fallback if server pagination is disabled
   const filteredOrders = useMemo(() => {
     return orders.filter((o) => {
       const q = search.toLowerCase();
@@ -65,8 +109,17 @@ export function OrdersTab({ orders, onFetchDetails, onResendEmail, onRegenerateL
     });
   }, [orders, search, statusFilter]);
 
-  const totalPages = Math.ceil(filteredOrders.length / pageSize) || 1;
-  const paginatedOrders = filteredOrders.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const displayedOrders = onFetchPaginated && serverOrders !== null
+    ? serverOrders
+    : filteredOrders.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  const totalOrders = onFetchPaginated && totalCount !== null
+    ? totalCount
+    : filteredOrders.length;
+
+  const totalPages = onFetchPaginated && totalPagesCount !== null
+    ? totalPagesCount
+    : (Math.ceil(filteredOrders.length / pageSize) || 1);
 
   const handleRowClick = async (orderId: string) => {
     try {
@@ -171,9 +224,16 @@ export function OrdersTab({ orders, onFetchDetails, onResendEmail, onRegenerateL
         <div className="lg:col-span-2 bg-card border border-border rounded-2xl overflow-hidden shadow-sm flex flex-col justify-between">
           <div>
             <div className="px-6 py-3.5 border-b border-border flex items-center justify-between">
-              <h3 className="font-bold text-foreground text-sm">Checkout Logs</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-foreground text-sm">Checkout Logs</h3>
+                {isFetching && (
+                  <span className="text-[10px] text-primary bg-primary/10 px-2 py-0.5 rounded-full font-medium animate-pulse">
+                    Syncing...
+                  </span>
+                )}
+              </div>
               <span className="text-xs text-foreground/50">
-                {filteredOrders.length} {filteredOrders.length === 1 ? 'order' : 'orders'} found
+                {totalOrders} {totalOrders === 1 ? 'order' : 'orders'} found
               </span>
             </div>
             <table className="w-full text-left border-collapse">
@@ -185,8 +245,8 @@ export function OrdersTab({ orders, onFetchDetails, onResendEmail, onRegenerateL
                   <th className="px-5 py-3">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border text-sm text-foreground/75">
-                {paginatedOrders.map((o) => (
+              <tbody className={`divide-y divide-border text-sm text-foreground/75 transition-opacity duration-150 ${isFetching ? 'opacity-60' : 'opacity-100'}`}>
+                {displayedOrders.map((o) => (
                   <tr
                     key={o.id}
                     onClick={() => handleRowClick(o.id)}
@@ -219,7 +279,7 @@ export function OrdersTab({ orders, onFetchDetails, onResendEmail, onRegenerateL
                     </td>
                   </tr>
                 ))}
-                {paginatedOrders.length === 0 && (
+                {displayedOrders.length === 0 && (
                   <tr>
                     <td colSpan={4} className="text-center py-8 text-foreground/50 text-xs">
                       No matching checkout orders found.
@@ -390,14 +450,20 @@ export function OrdersTab({ orders, onFetchDetails, onResendEmail, onRegenerateL
                   >
                     🔗 {actionLoading ? 'Processing...' : 'Regenerate Download Link'}
                   </button>
-                  <a
-                    href={`${(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api') + '/v1'}/orders/${selectedOrder.id}/invoice`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full bg-foreground/5 hover:bg-foreground/10 text-foreground font-bold py-2 rounded-lg transition-colors cursor-pointer text-xs flex items-center justify-center gap-1 border border-border"
-                  >
-                    📄 Download Tax Invoice (PDF)
-                  </a>
+                  {selectedOrder.status === 'PAID' ? (
+                    <a
+                      href={`${(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api') + '/v1'}/orders/${selectedOrder.id}/invoice`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full bg-foreground/5 hover:bg-foreground/10 text-foreground font-bold py-2 rounded-lg transition-colors cursor-pointer text-xs flex items-center justify-center gap-1 border border-border"
+                    >
+                      📄 Download Tax Invoice (PDF)
+                    </a>
+                  ) : (
+                    <div className="w-full bg-foreground/5 text-foreground/40 font-medium py-2 rounded-lg text-xs flex items-center justify-center gap-1 border border-dashed border-border select-none">
+                      🔒 Invoice available once settled (PAID)
+                    </div>
+                  )}
                 </div>
               </div>
 

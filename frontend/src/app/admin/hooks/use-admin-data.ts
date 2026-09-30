@@ -445,5 +445,42 @@ export function useAdminData(token: string | null, onUnauthorized?: () => void) 
     handleSaveSettings,
     handleToggleFlag,
     handleProfileUpdate,
+    fetchPaginatedOrders: async (params: { page?: number; limit?: number; search?: string; status?: string }) => {
+      const q = new URLSearchParams();
+      if (params.page) q.set('page', String(params.page));
+      if (params.limit) q.set('limit', String(params.limit));
+      if (params.search) q.set('search', params.search);
+      if (params.status && params.status !== 'ALL') q.set('status', params.status);
+
+      const res = await authFetch(`/orders?${q.toString()}`);
+      if (!res.ok) throw new Error(await parseError(res, 'Failed to fetch orders'));
+      const body = await res.json();
+      return body.data || body;
+    },
+    fetchPaginatedCustomers: async (params: { page?: number; limit?: number; search?: string; status?: string }) => {
+      const q = new URLSearchParams();
+      if (params.page) q.set('page', String(params.page));
+      if (params.limit) q.set('limit', String(params.limit));
+      if (params.search) q.set('search', params.search);
+      if (params.status && params.status !== 'ALL') q.set('status', params.status);
+
+      const res = await authFetch(`/customers?${q.toString()}`);
+      if (!res.ok) throw new Error(await parseError(res, 'Failed to fetch customers'));
+      const body = await res.json();
+      return body.data || body;
+    },
+    fetchPaginatedProducts: async (params: { page?: number; limit?: number; search?: string; categoryId?: string; status?: string }) => {
+      const q = new URLSearchParams();
+      if (params.page) q.set('page', String(params.page));
+      if (params.limit) q.set('limit', String(params.limit));
+      if (params.search) q.set('search', params.search);
+      if (params.categoryId && params.categoryId !== 'ALL') q.set('categoryId', params.categoryId);
+      if (params.status && params.status !== 'ALL') q.set('status', params.status);
+
+      const res = await authFetch(`/products?${q.toString()}`);
+      if (!res.ok) throw new Error(await parseError(res, 'Failed to fetch products'));
+      const body = await res.json();
+      return body.data || body;
+    },
   };
 }

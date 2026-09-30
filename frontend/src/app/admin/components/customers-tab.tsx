@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface Customer {
   id: string;
@@ -13,17 +13,59 @@ interface Customer {
 interface CustomersTabProps {
   customers: Customer[];
   onToggleStatus: (id: string, currentStatus: 'ACTIVE' | 'SUSPENDED') => Promise<void>;
+  onFetchPaginated?: (params: { page?: number; limit?: number; search?: string; status?: string }) => Promise<{
+    items: Customer[];
+    total: number;
+    totalPages: number;
+  }>;
 }
 
-export function CustomersTab({ customers, onToggleStatus }: CustomersTabProps) {
+export function CustomersTab({ customers, onToggleStatus, onFetchPaginated }: CustomersTabProps) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'SUSPENDED'>('ALL');
   const [currentPage, setCurrentPage] = useState(1);
   const [confirmToggle, setConfirmToggle] = useState<{ id: string; status: 'ACTIVE' | 'SUSPENDED'; name: string } | null>(null);
+  const [serverCustomers, setServerCustomers] = useState<Customer[] | null>(null);
+  const [totalCount, setTotalCount] = useState<number | null>(null);
+  const [totalPagesCount, setTotalPagesCount] = useState<number | null>(null);
+  const [isFetching, setIsFetching] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const pageSize = 5;
 
-  // Filter customers
+  // Debounced server-side query
+  useEffect(() => {
+    if (!onFetchPaginated) return;
+
+    let isCancelled = false;
+    const timer = setTimeout(async () => {
+      setIsFetching(true);
+      try {
+        const res = await onFetchPaginated({
+          page: currentPage,
+          limit: pageSize,
+          search: search.trim() || undefined,
+          status: statusFilter,
+        });
+        if (!isCancelled && res) {
+          setServerCustomers(res.items || []);
+          setTotalCount(res.total ?? 0);
+          setTotalPagesCount(res.totalPages ?? 1);
+        }
+      } catch (err) {
+        console.error('Failed to fetch paginated customers:', err);
+      } finally {
+        if (!isCancelled) setIsFetching(false);
+      }
+    }, 250);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+    };
+  }, [currentPage, search, statusFilter, refreshTrigger, onFetchPaginated]);
+
+  // Fallback client-side filter
   const filtered = customers.filter((c) => {
     const matchesSearch =
       c.email.toLowerCase().includes(search.toLowerCase()) ||
@@ -32,9 +74,17 @@ export function CustomersTab({ customers, onToggleStatus }: CustomersTabProps) {
     return matchesSearch && matchesStatus;
   });
 
-  // Paginated list
-  const totalPages = Math.ceil(filtered.length / pageSize);
-  const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const displayedCustomers = onFetchPaginated && serverCustomers !== null
+    ? serverCustomers
+    : filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  const totalCustomers = onFetchPaginated && totalCount !== null
+    ? totalCount
+    : filtered.length;
+
+  const totalPages = onFetchPaginated && totalPagesCount !== null
+    ? totalPagesCount
+    : (Math.ceil(filtered.length / pageSize) || 1);
 
   const handleToggleClick = (c: Customer) => {
     setConfirmToggle({
@@ -48,6 +98,7 @@ export function CustomersTab({ customers, onToggleStatus }: CustomersTabProps) {
     if (!confirmToggle) return;
     await onToggleStatus(confirmToggle.id, confirmToggle.status);
     setConfirmToggle(null);
+    setRefreshTrigger((prev) => prev + 1);
   };
 
   return (
@@ -111,8 +162,18 @@ export function CustomersTab({ customers, onToggleStatus }: CustomersTabProps) {
 
       {/* Shoppers Table */}
       <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
-        <div className="px-6 py-4 border-b border-border">
-          <h3 className="font-bold text-foreground">Registered Shoppers</h3>
+        <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h3 className="font-bold text-foreground">Registered Shoppers</h3>
+            {isFetching && (
+              <span className="text-[10px] text-primary bg-primary/10 px-2 py-0.5 rounded-full font-medium animate-pulse">
+                Syncing...
+              </span>
+            )}
+          </div>
+          <span className="text-xs text-foreground/50">
+            {totalCustomers} {totalCustomers === 1 ? 'shopper' : 'shoppers'} found
+          </span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[500px]">
@@ -124,8 +185,8 @@ export function CustomersTab({ customers, onToggleStatus }: CustomersTabProps) {
                 <th className="px-6 py-3 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border text-sm text-foreground/75">
-              {paginated.map((c) => (
+            <tbody className={`divide-y divide-border text-sm text-foreground/75 transition-opacity duration-150 ${isFetching ? 'opacity-60' : 'opacity-100'}`}>
+              {displayedCustomers.map((c) => (
                 <tr key={c.id} className="hover:bg-foreground/5 transition-colors">
                   <td className="px-6 py-4">
                     <div className="font-semibold text-foreground">{c.name || 'Anonymous Buyer'}</div>
@@ -157,7 +218,7 @@ export function CustomersTab({ customers, onToggleStatus }: CustomersTabProps) {
                   </td>
                 </tr>
               ))}
-              {paginated.length === 0 && (
+              {displayedCustomers.length === 0 && (
                 <tr>
                   <td colSpan={4} className="text-center py-6 text-foreground/50">
                     No matching customer records found.
@@ -172,7 +233,7 @@ export function CustomersTab({ customers, onToggleStatus }: CustomersTabProps) {
         {totalPages > 1 && (
           <div className="flex justify-between items-center px-6 py-3 border-t border-border bg-foreground/5 text-xs text-foreground/60">
             <span>
-              Page {currentPage} of {totalPages} ({filtered.length} total shoppers)
+              Page {currentPage} of {totalPages} ({totalCustomers} total shoppers)
             </span>
             <div className="flex gap-2">
               <button

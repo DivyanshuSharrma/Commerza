@@ -24,6 +24,7 @@ export class QueueProcessor {
     });
 
     const downloadLink = `${process.env.APP_URL || 'http://localhost:3000'}/api/v1/download/d/${order.downloadToken}`;
+    const invoiceLink = `${process.env.APP_URL || 'http://localhost:3000'}/api/v1/orders/${order.id}/invoice`;
 
     const emailHtml = `
       <div style="font-family: sans-serif; padding: 24px; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eef2f6; border-radius: 8px;">
@@ -42,9 +43,10 @@ export class QueueProcessor {
           </tr>
         </table>
 
-        <p>You can securely download your digital product using the button below:</p>
+        <p>You can securely download your digital product and download your tax invoice below:</p>
         <div style="margin: 25px 0;">
-          <a href="${downloadLink}" style="background-color: ${order.brand.primaryColor || '#4f46e5'}; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Download Product</a>
+          <a href="${downloadLink}" style="background-color: ${order.brand.primaryColor || '#4f46e5'}; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; margin-right: 10px; margin-bottom: 8px;">Download Product</a>
+          <a href="${invoiceLink}" style="background-color: #f1f5f9; color: #0f172a; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; border: 1px solid #cbd5e1; margin-bottom: 8px;">📄 Download Tax Invoice (PDF)</a>
         </div>
         
         <div style="background-color: #f8fafc; border-left: 4px solid ${order.brand.primaryColor || '#4f46e5'}; padding: 12px 16px; margin: 20px 0; border-radius: 4px;">

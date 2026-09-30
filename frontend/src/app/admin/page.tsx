@@ -82,6 +82,9 @@ export default function AdminPage() {
     handleSaveSettings,
     handleToggleFlag,
     handleProfileUpdate,
+    fetchPaginatedOrders,
+    fetchPaginatedCustomers,
+    fetchPaginatedProducts,
     triggerToast,
   } = useAdminData(token, handleUnauthorized);
 
@@ -314,6 +317,7 @@ export default function AdminPage() {
               onCreateProduct={handleCreateProduct}
               onDeleteProduct={handleDeleteProduct}
               onTogglePublish={handleTogglePublish}
+              onFetchPaginated={fetchPaginatedProducts}
             />
           )}
           {activeTab === 'categories' && (
@@ -337,12 +341,14 @@ export default function AdminPage() {
               onFetchDetails={handleFetchOrderDetails}
               onResendEmail={handleResendEmail}
               onRegenerateLink={handleRegenerateLink}
+              onFetchPaginated={fetchPaginatedOrders}
             />
           )}
           {activeTab === 'customers' && (
             <CustomersTab
               customers={customers}
               onToggleStatus={handleCustomerStatusToggle}
+              onFetchPaginated={fetchPaginatedCustomers}
             />
           )}
           {activeTab === 'coupons' && (

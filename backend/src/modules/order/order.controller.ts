@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Param, Query, Body, UseGuards, ForbiddenException, Logger, Res } from '@nestjs/common';
+import { Controller, Post, Get, Param, Query, Body, UseGuards, ForbiddenException, BadRequestException, Logger, Res } from '@nestjs/common';
 import type * as express from 'express';
 import { OrderQueryService } from './order-query.service';
 import { OrderCommandService } from './order-command.service';
@@ -83,6 +83,11 @@ export class OrderController {
   ) {
     this.logger.log(`Invoice request received for Order ID: ${id}`);
     const order = await this.orderQueryService.findOne(id);
+
+    if (order.status !== 'PAID') {
+      throw new BadRequestException('Tax invoices are only issued for verified and settled PAID orders.');
+    }
+
     const pdfBuffer = await this.invoicePdfService.generateInvoiceBuffer(order);
 
     res.setHeader('Content-Type', 'application/pdf');
